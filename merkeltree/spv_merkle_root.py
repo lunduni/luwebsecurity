@@ -21,49 +21,57 @@ Outputs the resulting Merkle root as lowercase hex.
 from __future__ import annotations
 
 import argparse
-import hashlib
+import sys
 from pathlib import Path
-from typing import Iterable, Tuple
+
+# Allow running as a script (python .\merkeltree\spv_merkle_root.py ...) while still
+# supporting package-style imports (from merkeltree.common ...).
+if __package__ is None or __package__ == "":
+    repo_root = Path(__file__).resolve().parents[1]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+
+from merkeltree.common import InputFormatError, _iter_nonempty_lines, _parse_hex_bytes, _sha1
 
 
-class InputFormatError(ValueError):
-    pass
+# class InputFormatError(ValueError):
+#     pass
 
 
-def _parse_hex_bytes(hex_str: str, *, context: str) -> bytes:
-    '''
-    Parses a hex string into bytes, with error context.
-        :param hex_str: The hex string to parse.
-        :param context: Contextual information for error messages.
-        :return: The parsed bytes.
-        :rtype: bytes
-    '''
-    s = hex_str.strip()
-    if s.startswith("0x") or s.startswith("0X"):
-        # remove the 0x prefix that sometimes appears in hex strings
-        s = s[2:]
-    if len(s) == 0:
-        raise InputFormatError(f"Missing hex string for {context}.")
-    if len(s) % 2 != 0:
-        # because every valid hex string's length must be even
-        raise InputFormatError(f"Hex string length must be even for {context}: got {len(s)}.")
-    try:
-        return bytes.fromhex(s)
-    except ValueError as e:
-        raise InputFormatError(f"Invalid hex for {context}: {e}") from e
+# def _parse_hex_bytes(hex_str: str, *, context: str) -> bytes:
+#     '''
+#     Parses a hex string into bytes, with error context.
+#         :param hex_str: The hex string to parse.
+#         :param context: Contextual information for error messages.
+#         :return: The parsed bytes.
+#         :rtype: bytes
+#     '''
+#     s = hex_str.strip()
+#     if s.startswith("0x") or s.startswith("0X"):
+#         # remove the 0x prefix that sometimes appears in hex strings
+#         s = s[2:]
+#     if len(s) == 0:
+#         raise InputFormatError(f"Missing hex string for {context}.")
+#     if len(s) % 2 != 0:
+#         # because every valid hex string's length must be even
+#         raise InputFormatError(f"Hex string length must be even for {context}: got {len(s)}.")
+#     try:
+#         return bytes.fromhex(s)
+#     except ValueError as e:
+#         raise InputFormatError(f"Invalid hex for {context}: {e}") from e
 
 
-def _iter_nonempty_lines(text: str) -> Iterable[Tuple[int, str]]:
-    '''
-    A generator function that yields the hashes as non-empty lines from the input text along with their line numbers (indexes).
-        :param text: The input text to process.
-    '''
-    for idx, raw in enumerate(text.splitlines(), start=1):
-        line = raw.strip()
-        if not line:
-            continue
-        print(f"Iterating line {idx}: {line}")
-        yield idx, line
+# def _iter_nonempty_lines(text: str) -> Iterable[Tuple[int, str]]:
+#     '''
+#     A generator function that yields the hashes as non-empty lines from the input text along with their line numbers (indexes).
+#         :param text: The input text to process.
+#     '''
+#     for idx, raw in enumerate(text.splitlines(), start=1):
+#         line = raw.strip()
+#         if not line:
+#             continue
+#         print(f"Iterating line {idx}: {line}")
+#         yield idx, line
 
 
 def compute_merkle_root_from_file_content(file_content: str) -> bytes:
@@ -94,7 +102,8 @@ def compute_merkle_root_from_file_content(file_content: str) -> bytes:
         else:  # side == "R". This is safe because of the earlier check on line 85.
             data = current + sibling
 
-        current = hashlib.sha1(data).digest()
+        # current = hashlib.sha1(data).digest()
+        current = _sha1(data)
 
     return current
 
