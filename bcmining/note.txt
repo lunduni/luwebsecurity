@@ -1,0 +1,1 @@
+Implement the blockchain mining assignment in this folder.
