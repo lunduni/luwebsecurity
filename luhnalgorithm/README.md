@@ -24,9 +24,9 @@ The script expects a text file as an argument where each line contains a number 
 ### `conversions.py`
 
 A utility module containing functions for common data type conversions and hashing used in crypto challenges or security tasks. Can be run interactively with
-'''bash
+```bash
 python -i conversions.py
-'''
+```
 
 **Functions:**
 
@@ -37,3 +37,18 @@ python -i conversions.py
 - `hex_to_bytes(hex_str)`: Converts a hex string to bytes.
 - `bytes_to_hex(byte_data)`: Converts bytes to a hex string.
 - `hash_bytes(byte_data)`: Computes the SHA-256 hash of byte data.
+
+### `run_conversions.py`
+
+Interactive menu wrapper around the functions in `conversions.py`. It prompts you to pick a conversion, asks for the input value, then prints the result.
+
+**Usage:**
+
+```bash
+python run_conversions.py
+```
+
+**Notes:**
+
+- Options that take “bytes” ask you to enter the bytes as a hex string (example: `deadbeef`).
+- For “hex string” inputs, you can include `0x` or not.
