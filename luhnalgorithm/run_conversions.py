@@ -1,4 +1,9 @@
-"""Interactive conversions runner.
+"""
+This program is an Interactive conversions runner to help with various data format conversions.
+Written by:
+- Prince Samuel Kyeremanteng
+- Hadar Eklund
+
 
 Run:
 	python luhnalgorithm/run_conversions.py
