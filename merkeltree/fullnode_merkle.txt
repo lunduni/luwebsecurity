@@ -21,13 +21,17 @@ Outputs (stdout):
 Optionally prints the full Merkle path (leaf sibling first) to stderr.
 """
 
+# We leveraged on these python standard libraries:
+# this allows postponed evaluation of annotations
 from __future__ import annotations
-
+# for command-line argument parsing and system operations
 import argparse
 import sys
+# for data structure definitions and type hinting
 from dataclasses import dataclass
-from pathlib import Path
 from typing import List, Tuple
+# for file path manipulations
+from pathlib import Path
 
 # so it can run as a script while still supporting package-style imports
 if __package__ is None or __package__ == "":
@@ -162,6 +166,7 @@ def parse_input_file(content: str) -> Tuple[int, int, List[bytes]]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    #Main entry point for the full-node Merkle tree helper.
     parser = argparse.ArgumentParser(
         description="Build a SHA-1 Merkle tree and output the node-at-depth-j + root concatenation."
     )
