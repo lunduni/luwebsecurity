@@ -20,16 +20,27 @@ Usage examples (PowerShell):
 
 from __future__ import annotations
 
+# We leveraged on these python standard libraries:
+
+# for parsing arguments in the command line
 import argparse
+# for hash related functions
 import hashlib
+# for json encoding/decoding
 import json
+# for random nonce (number) generation
 import random
+# for regular expressions
 import re
+# for system related functions
 import sys
+# for time related functions
 import time
+# for URL requests handling
 import urllib.error
 import urllib.parse
 import urllib.request
+# for typing annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
@@ -121,6 +132,7 @@ def fetch_chain(server: str, seed: str) -> List[Dict[str, Any]]:
 
 
 def validate_chain(chain: List[Dict[str, Any]], seed: str) -> Tuple[bool, str]:
+    # Validates the entire chain.
     if not chain:
         return False, "Chain is empty"
 
@@ -221,6 +233,7 @@ def extend_chain(chain: List[Dict[str, Any]], seed: str, additional_blocks: int)
 
 
 def submit_chain(server: str, seed: str, chain: List[Dict[str, Any]]) -> str:
+    # Submit the extended chain to the server.
     chain_json = json.dumps(chain, separators=(",", ":"))
 
     # Server expects GET with query params.
@@ -242,6 +255,7 @@ def submit_chain(server: str, seed: str, chain: List[Dict[str, Any]]) -> str:
 
 
 def parse_args(argv: List[str]) -> argparse.Namespace:
+    # Parses command line arguments.
     p = argparse.ArgumentParser(description="Blockchain mining assignment helper")
     p.add_argument("--seed", required=True, help="4 hex digits (0000-ffff) or 'random'")
     p.add_argument("--server", default=DEFAULT_SERVER, help=f"Server base URL (default: {DEFAULT_SERVER})")
@@ -251,6 +265,7 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
 
 
 def main(argv: List[str]) -> int:
+    # This is where the main execution starts.
     args = parse_args(argv)
 
     seed = args.seed.lower()
@@ -288,4 +303,6 @@ def main(argv: List[str]) -> int:
 
 
 if __name__ == "__main__":
+    # Entry point.
+    # we pass sys.argv[1:] to skip the script name.
     raise SystemExit(main(sys.argv[1:]))
