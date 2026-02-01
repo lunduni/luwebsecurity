@@ -1,3 +1,7 @@
+# conversion helpers. These are simple functions to convert between
+# integers, hexadecimal strings, and byte arrays.
+# Please note that this file is part of the luhn algorithm assignment.
+
 import hashlib
 
 def int_to_hash(num):

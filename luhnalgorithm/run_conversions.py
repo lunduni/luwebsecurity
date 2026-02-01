@@ -5,7 +5,6 @@ Written by:
 - Hadar Eklund
 - Group 24.
 
-
 Run:
 	python luhnalgorithm/run_conversions.py
 
@@ -30,6 +29,7 @@ from conversions import (
 
 
 def _print_menu() -> None:
+	# this prints the menu of conversion options
 	print("\nChoose a conversion:")
 	print("  1) int -> hex string (int_to_hash)")
 	print("  2) hex string -> int (hex_to_int)")
@@ -42,6 +42,7 @@ def _print_menu() -> None:
 
 
 def _prompt_int(prompt: str) -> int:
+	# prompts the user for an integer until a valid one is given
 	while True:
 		raw = input(prompt).strip()
 		try:
@@ -51,6 +52,7 @@ def _prompt_int(prompt: str) -> int:
 
 
 def _prompt_hex(prompt: str) -> str:
+	# prompts the user for a hex string until a valid one is given
 	while True:
 		raw = input(prompt).strip()
 		if raw.startswith("0x") or raw.startswith("0X"):
@@ -71,6 +73,7 @@ def _prompt_hex(prompt: str) -> str:
 
 
 def main() -> None:
+	# main interactive loop
 	print("Conversions runner (using conversions.py)")
 
 	while True:

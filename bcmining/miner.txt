@@ -18,9 +18,9 @@ Usage examples (PowerShell):
 
 """
 
-from __future__ import annotations
-
 # We leveraged on these python standard libraries:
+# this allows postponed evaluation of annotations
+from __future__ import annotations
 
 # for parsing arguments in the command line
 import argparse
