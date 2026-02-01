@@ -17,11 +17,14 @@ Parent computation:
 
 Outputs the resulting Merkle root as lowercase hex.
 """
+# We leveraged on these python standard libraries:
 
+# this allows postponed evaluation of annotations
 from __future__ import annotations
-
+# for command-line argument parsing and system operations
 import argparse
 import sys
+# for file path manipulations
 from pathlib import Path
 
 # so I can run this file directly from within the merkeltree package
