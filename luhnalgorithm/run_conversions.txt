@@ -3,7 +3,6 @@ This program is an Interactive conversions runner to help with various data form
 Written by:
 - Prince Samuel Kyeremanteng
 - Hadar Eklund
-- Group 24.
 
 
 Run:
@@ -13,11 +12,8 @@ This script prompts you for a conversion type and an input value, then uses the
 predefined conversion functions in conversions.py.
 """
 
-# this is needed for Python 3.7 and 3.8 to 
-# support postponed evaluation of annotations
 from __future__ import annotations
 
-# all these are helpers defined in conversions.py
 from conversions import (
 	bytes_to_hex,
 	bytes_to_int,
