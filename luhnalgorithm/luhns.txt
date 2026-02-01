@@ -1,3 +1,5 @@
+# implementation for the actual luhn algorithm to find missing digit 'X'
+
 import sys
 
 def luhns(num_str):
