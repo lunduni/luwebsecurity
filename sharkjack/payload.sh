@@ -1,27 +1,40 @@
 #!/bin/bash
-# Minimalist Nmap Recon for Shark Jack
 
-# 1. Start Up (Magenta LED)
-LED SETUP
-NETMODE DHCP
+LOOT_DIR="/root/loot/fetch"
+FILE_NAME="luhns_algorithm_solution.py"
 
-# 2. Wait for IP (Blinks Yellow until connected)
-while [ -z "$(ip addr show eth0 | grep 'inet ')" ]; do
-    LED Y SOLID; sleep 0.5; LED OFF; sleep 0.5
+LED Y
+mkdir -p "$LOOT_DIR"
+
+# 1. Connect (Simple Wait)
+NETMODE DHCP_CLIENT
+while ! ip addr show eth0 | grep -q "inet "; do
+    sleep 1
 done
 
-# 3. Target Discovery
-# Grabs your IP, trims it to find the subnet (e.g., 192.168.1.0/24)
-INTERNAL_IP=$(ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1)
-SUBNET=$(echo $INTERNAL_IP | cut -d"." -f1-3)".0/24"
+sleep 5
 
-# 4. The Scan (Yellow LED)
-LED ATTACK
-LOOT_FILE="/root/loot/scan_$(date +%s).txt"
-mkdir -p /root/loot
+# Extracts "192.168.1" from "192.168.1.50/24"
+SUBNET=$(ip addr show eth0 | grep "inet " | awk '{print $2}' | cut -d. -f1-3)
 
-# Performs a fast "Ping Scan" and saves to the file
-nmap -sn "$SUBNET" > "$LOOT_FILE"
+# 3. Scan & Identify Target
+LED M
 
-# 5. Done (Green LED)
-LED FINISH
+# -oN saves the list of hosts to a file
+# -oG - pipes the machine-readable output so we can grab the IP automatically
+TARGET=$(nmap -n -Pn -T4 -p 8000 --open -oN "$LOOT_DIR/scan_results.txt" -oG - ${SUBNET}.0/24 | awk '/8000\/open/ {print $2; exit}')
+
+if [ -z "$TARGET" ]; then
+    LED R
+    exit 1
+fi
+
+LED C
+
+wget -T 10 "http://$TARGET:8000/$FILE_NAME" -O "$LOOT_DIR/$FILE_NAME"
+
+if [ -f "$LOOT_DIR/$FILE_NAME" ]; then
+    LED G
+else
+    LED R
+fi
