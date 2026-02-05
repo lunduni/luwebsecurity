@@ -1,0 +1,112 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
+"""Diffie-Hellman (DH) client helpers for the course server.
+
+This module mirrors the protocol used in diffiehelman/dh/server.py:
+- server sends g^x1 mod p
+- client sends g^x2 mod p
+- both derive key = (g^x1)^x2 mod p
+- server sends enc = int(hexlify(msg)) XOR key
+"""
+
+from __future__ import annotations
+
+import binascii
+import os
+import socket
+from typing import Tuple
+
+
+P_1536 = int(
+    "ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc740"
+    "20bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374"
+    "fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7ede"
+    "e386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf059"
+    "8da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9"
+    "ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff",
+    16,
+)
+
+G_DEFAULT = 2
+
+
+def generate_random(modulus: int, bits: int = 1536) -> int:
+    """Generate a random exponent with ~bits entropy, reduced mod modulus."""
+    byte_len = bits // 8
+    rnd_num = os.urandom(byte_len)
+    while rnd_num[0] < 128:
+        rnd_num = os.urandom(byte_len)
+
+    rnd_int = int("".join(format(i, "x") for i in rnd_num), 16)
+    return rnd_int % modulus
+
+
+def _send_int(sock: socket.socket, num: int) -> None:
+    num_str = format(num, "x").encode("utf8")
+    sock.sendall(num_str)
+
+
+def _recv_int(sock: socket.socket) -> int:
+    num_str = sock.recv(8192).decode("utf8")
+    return int(num_str, 16)
+
+
+def _int_to_bytes(i: int) -> bytes:
+    hx = format(i, "x")
+    if len(hx) % 2 == 1:
+        hx = "0" + hx
+    return binascii.unhexlify(hx)
+
+
+def dh_handshake_only(
+    host: str,
+    port: int = 6004,
+    *,
+    p: int = P_1536,
+    g: int = G_DEFAULT,
+    timeout_s: float | None = 10.0,
+) -> Tuple[int, socket.socket]:
+    """Perform just the DH key exchange and return (key, connected socket).
+
+    The returned socket is still open so the caller can continue receiving.
+    Caller is responsible for closing it.
+    """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    if timeout_s is not None:
+        sock.settimeout(timeout_s)
+    sock.connect((host, port))
+
+    g_x1 = _recv_int(sock)
+    x2 = generate_random(p)
+    g_x2 = pow(g, x2, p)
+    _send_int(sock, g_x2)
+
+    key = pow(g_x1, x2, p)
+    return key, sock
+
+
+def dh_handshake_and_decrypt(
+    host: str,
+    port: int = 6004,
+    *,
+    p: int = P_1536,
+    g: int = G_DEFAULT,
+    timeout_s: float | None = 10.0,
+) -> Tuple[str, int]:
+    """Complete the handshake and decrypt the server's secret message.
+
+    Returns (plaintext, key).
+    """
+    key: int
+    sock: socket.socket
+    key, sock = dh_handshake_only(host, port, p=p, g=g, timeout_s=timeout_s)
+    try:
+        enc = _recv_int(sock)
+    finally:
+        sock.close()
+
+    msg_int = enc ^ key
+    plaintext_bytes = _int_to_bytes(msg_int)
+    plaintext = plaintext_bytes.decode("utf-8")
+    return plaintext, key

@@ -8,7 +8,8 @@ from socketserver import BaseRequestHandler, ThreadingTCPServer
 import binascii
 
 
-SECRET_MSG = b"I love you!"
+SECRET_MSG = b"Hey, I am Alice! I love you!"  # 32 bytes
+# SECRET_MSG = b"I love you!"
 
 
 def generate_random(N, bits=1536):
