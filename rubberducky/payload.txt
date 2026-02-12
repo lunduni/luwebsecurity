@@ -2,7 +2,7 @@ REM === USB Rubber Ducky: Educational HID Trust Demo ===
 DELAY 1000
 
 REM Open notepad
-GUI r
+GUI r                                               
 DELAY 500
 STRING notepad
 ENTER
@@ -19,7 +19,7 @@ STRING # LET'S GOOOOOOOOOOOOO!
 DELAY 1000
 ENTER
 ENTER
-STRING import hashlib
+STRING import hashlib 
 ENTER
 ENTER
 STRING def hash_data(data):

@@ -333,7 +333,7 @@ def run_otr_client(
 
 if __name__ == "__main__":
     host = os.environ.get("OTR_HOST", "igor.eit.lth.se")
-    port = int(os.environ.get("OTR_PORT", "6005"))
+    port = int(os.environ.get("OTR_PORT", "6004"))
     # msg = os.environ.get("OTR_MSG", "0123456789abcdef")
     msg = os.environ.get("OTR_MSG", "1337")
     dh_init = os.environ.get("OTR_DH_INIT", "auto")  # 'auto' | 'server' | 'client'

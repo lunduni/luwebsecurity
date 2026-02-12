@@ -22,8 +22,8 @@ def _import_helpers():
 
 if __name__ == '__main__':
     """python client.py"""
-    host = os.environ.get("DH_HOST", "127.0.0.1")
-    # host = os.environ.get("DH_HOST", "igor.eit.lth.se")
+    # host = os.environ.get("DH_HOST", "127.0.0.1")
+    host = os.environ.get("DH_HOST", "igor.eit.lth.se")
     port = int(os.environ.get("DH_PORT", "6004"))
 
     dh_handshake_and_decrypt = _import_helpers()
