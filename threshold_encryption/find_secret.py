@@ -4,10 +4,14 @@
 3. the polynomial in a string format, e.g. "2*x^2 + 3*x + 4"
 4. points at f(1), string format, e.g. "5, 10, 15"
 5. Coordinates from k-1 participants, string format, (x,y), e.g. "(1,5), (2,10)"
+
+By:
+Group 24: Prince Samuel Kyeremanteng and Hadar Eklund
 """
 
 
 class MyPolynomial:
+    # This is a simple parser and evaluator for polynomials in the format like "2*x^2 + 3*x + 4".
     coefficients = []
     valueAt1 = 0
 
@@ -16,6 +20,8 @@ class MyPolynomial:
         self.valueAt1 = self.evaluate(1)
 
     def evaluate(self, x):
+        # A simple evaluator that computes the value of the polynomial at a given x. 
+        # It handles terms like "2*x^2", "3*x", and "4".
         value = 0
         for term in self.coefficients:
             if "x^" in term:
@@ -34,6 +40,7 @@ class MyPolynomial:
 
 
 class SecretPolynomial:
+    # This class takes the k, n, and coordinates of k-1 participants and performs Lagrange interpolation to find the secret value at x=0.
     k = 0
     n = 0
     coordinates = []
@@ -44,6 +51,7 @@ class SecretPolynomial:
         self.coordinates = coordinates
 
     def lagrange_interpolation(self, x):
+        # This method performs Lagrange interpolation to compute the value of the polynomial at a given x (in our case, x=0 for the secret).
         total = 0
         for i in range(self.k):
             term = 1
