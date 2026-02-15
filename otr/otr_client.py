@@ -17,6 +17,8 @@ Group 24: Prince Samuel Kyeremanteng and Hadar Eklund
 
 from __future__ import annotations
 
+# standard library imports
+# hashlib, base64, os, secrets, socket, dataclasses, pathlib, typing, re
 import hashlib
 import base64
 import os
@@ -45,6 +47,8 @@ G = int(_G_DEFAULT) if _G_DEFAULT is not None else 2
 
 
 def load_p_from_file(p_file: Path) -> int:
+    # The assignment handout specifies that p should be loaded from a file, 
+    # so we do that even if we have a hardcoded fallback.
     data = p_file.read_bytes()
     p = int.from_bytes(data, "big")
     if _P_1536 is not None and p != int(_P_1536):
@@ -76,17 +80,20 @@ def _random_exponent(p: int) -> int:
 
 
 def _int_to_min_bytes(x: int) -> bytes:
+    # Convert an integer to its minimal big-endian byte representation (no leading zeros).
     if x == 0:
         return b"\x00"
     return x.to_bytes((x.bit_length() + 7) // 8, "big")
 
 
 def _inv_mod(a: int, p: int) -> int:
+    # Compute the modular inverse of a mod p using Fermat's little theorem, since p is prime.
     return pow(a, p - 2, p)
 
 
 @dataclass
 class StreamCodec:
+    # StreamCodec provides a convenient interface for sending/receiving integers and text messages over a socket-like object.
     sock: "SocketLike"
     buf: bytearray
 
@@ -146,9 +153,9 @@ class StreamCodec:
             try:
                 chunk = self._recv_more()
             except (TimeoutError, socket.timeout):
-                # Many course servers send integers as a single undelimited hex blob,
+                # We realised that sometimes the server send integers as a single undelimited hex blob,
                 # then wait for the next client message. In that case, a recv timeout
-                # means "end of token" and we should parse what we have.
+                # means "end of token" and so we parse what we have.
                 token = bytes(self.buf).strip()
                 if token and _all_hex(token):
                     self.buf.clear()
@@ -209,6 +216,8 @@ class StreamCodec:
 
 @runtime_checkable
 class SocketLike(Protocol):
+    # A minimal protocol for socket-like objects used by StreamCodec. 
+    # This allows us to use either a raw TCP socket or a WebSocketConnection interchangeably.
     def recv(self, bufsize: int) -> bytes: ...
     def sendall(self, data: bytes) -> None: ...
     def settimeout(self, value: float | None) -> None: ...
@@ -219,15 +228,18 @@ _WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 
 def _ws_key() -> str:
+    # Generate a random 16-byte value and return it base64-encoded as the Sec-WebSocket-Key.
     return base64.b64encode(secrets.token_bytes(16)).decode("ascii")
 
 
 def _ws_accept_for_key(key: str) -> str:
+    # Compute the expected Sec-WebSocket-Accept value for a given Sec-WebSocket-Key.
     digest = hashlib.sha1((key + _WS_GUID).encode("ascii")).digest()
     return base64.b64encode(digest).decode("ascii")
 
 
 def _recv_until(sock: socket.socket, marker: bytes, *, limit: int = 65536) -> bytes:
+    # Receive from the socket until the marker sequence is found, or limit is exceeded.
     data = bytearray()
     while marker not in data:
         chunk = sock.recv(4096)
@@ -455,9 +467,6 @@ def run_otr_client(
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(timeout_s)
     s.connect((host, port))
-
-    # Note: Postman can show WebSocket upgrade headers, but the course services are often raw TCP
-    # protocols (not HTTP) despite being reachable via host:port.
     transport = transport.lower().strip()
     if transport not in ("auto", "tcp", "ws"):
         raise ValueError("transport must be 'auto', 'tcp', or 'ws'")
@@ -493,9 +502,7 @@ def run_otr_client(
     codec = StreamCodec(sock_like, send_delimiter=send_delim)
 
     try:
-        # DH Kex
-        # Most handouts show server-first (Alice sends g^x1). Some deployments may be client-first.
-        # Support both via dh_initiator: 'auto' | 'server' | 'client'.
+        # Support different initiator modes via dh_initiator: 'auto' | 'server' | 'client'.
         x2 = _random_exponent(p)
         g_x2 = pow(G, x2, p)
 
@@ -601,7 +608,6 @@ def run_otr_client(
         if c != expected:
             raise ValueError("SMP verification failed (c != Pa*Pb^-1)")
 
-        # Some servers send an explicit auth token after SMP; others don’t.
         # Don’t block here: if no token arrives quickly, proceed to the secure chat.
         try:
             sock_like.settimeout(min(0.75, timeout_s))
@@ -619,7 +625,6 @@ def run_otr_client(
         enc = m ^ dh_key
         codec.send_int(enc)
         response = codec.recv_text_eof()
-        # Autograder expects the 40-hex SHA1 token, some servers prefix it with text like 'success'.
         m = re.search(r"[0-9a-fA-F]{40}", response)
         normalized = m.group(0).lower() if m else response.strip()
         print("Response:", normalized)
