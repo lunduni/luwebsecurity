@@ -1,4 +1,5 @@
-"""RSA OAEP padding helpers (MGF1 + OAEP encode/decode).
+"""
+RSA OAEP padding helpers (MGF1 + OAEP encode/decode).
 
 Implements the pieces needed for RSAES-OAEP as specified in RFC 8017:
 - I2OSP (Section 4.1)
@@ -9,10 +10,15 @@ Notes for the course assignment:
 - This module implements OAEP *encoding* and *decoding* only (no RSA).
 - The target encoded message length is k=128 bytes (1024-bit RSA).
 - Inputs/outputs in this module are bytes; see run_oaep.py for hex I/O.
+
+By:
+Group 24: Prince Samuel Kyeremanteng and Hadar Eklund
 """
 
 from __future__ import annotations
 
+# uses the builtin hashlib for SHA-1, 
+# We declare that this is not a secure hash but is what the assignment specifies.
 import hashlib
 from typing import Callable
 

@@ -1,7 +1,5 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
-
-"""Simplified OTR client (Bob) for the Advanced Web Security assignment.
+"""
+Simplified OTR client (Bob) for the Advanced Web Security assignment.
 
 Implements:
 - Diffie-Hellman key exchange
@@ -10,7 +8,11 @@ Implements:
 
 All group operations are mod p in Z_p^*, with generator g = g1 = 2.
 
-This code is designed to be importable and also runnable as a script.
+
+By:
+Group 24: Prince Samuel Kyeremanteng and Hadar Eklund
+
+
 """
 
 from __future__ import annotations

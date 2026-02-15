@@ -1,20 +1,28 @@
-"""Small runner for RSA OAEP assignment.
+"""
+Small runner for RSA OAEP assignment.
 
 Run from repo root:
 	python .\rsa-oaep\run_oaep.py --selftest
 
 Or interactively:
 	python .\rsa-oaep\run_oaep.py
+
+By:
+Group 24: Prince Samuel Kyeremanteng and Hadar Eklund
 """
 
 from __future__ import annotations
 
+# this is for parsing command-line args; the actual OAEP logic is in rsa_oaep.py.
 import argparse
 
+# imports from rsa_oaep.py, which implements the actual OAEP logic.
 from rsa_oaep import bytes_to_hex, hex_to_bytes, mgf1, oaep_decode, oaep_encode
 
 
 def _prompt_hex(prompt: str, *, allow_empty: bool = False) -> str:
+	# This is a simple helper to prompt for hex input and validate it. 
+	# It also allows optional spaces and "0x" prefix for convenience.
 	while True:
 		raw = input(prompt).strip()
 		raw = raw.replace(" ", "") # Remove spaces for easier input
@@ -31,6 +39,7 @@ def _prompt_hex(prompt: str, *, allow_empty: bool = False) -> str:
 
 
 def _prompt_int(prompt: str) -> int:
+	# Simple helper to prompt for an integer and validate it.
 	while True:
 		raw = input(prompt).strip()
 		try:
@@ -41,6 +50,8 @@ def _prompt_int(prompt: str) -> int:
 
 def selftest() -> int:
 	# MGF1 example from the assignment prompt
+	# we only used this to verify our MGF1 implementation matches the provided test vector; 
+	# not a full unit test suite. LOL
 	seed_hex = "0123456789abcdef"
 	mask_len = 30
 	expected_mask_hex = "18a65e36189833d99e55a68dedda1cce13a494c947817d25dc80d9b4586a"
@@ -83,6 +94,7 @@ def selftest() -> int:
 
 
 def interactive() -> None:
+	# This is a simple interactive loop to test MGF1, OAEP encode, and OAEP decode with hex input/output.
 	print("RSA OAEP runner")	
 	while True:
 		print("\nChoose:")
@@ -117,7 +129,6 @@ def interactive() -> None:
 def main() -> int:
 	parser = argparse.ArgumentParser()
 	# just a simple test to verify the implementation matches the provided test vectors;
-    # not a full unit test suite. LOL
 	parser.add_argument("--selftest", action="store_true", help="run provided test vectors")
 	args = parser.parse_args()
 
