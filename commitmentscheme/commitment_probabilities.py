@@ -18,8 +18,13 @@ Run:
   python commitmentscheme/commitment_probabilities.py --min-x 4 --max-x 48 --outdir commitmentscheme/out
 
 Outputs:
-  - outdir/probabilities.csv
-  - outdir/probabilities.png (if matplotlib is installed)
+  - out/probabilities.csv
+  - out/probabilities.png
+  - out/probabilities_binding.png
+  - out/probabilities_hiding.png
+
+By:
+Group 24: Prince Samuel Kyeremanteng and Hadar Eklund
 """
 
 from __future__ import annotations
@@ -108,6 +113,7 @@ def hiding_break_probability(K: int, X: int) -> float:
 
 
 def compute_series(K: int, xs: Iterable[int]) -> List[Tuple[int, float, float]]:
+    # Compute break probabilities for each X in xs, returning a list of (X, p_break_binding, p_break_hiding).
     rows: List[Tuple[int, float, float]] = []
     for X in xs:
         pb = binding_break_probability(K, X)
@@ -117,6 +123,7 @@ def compute_series(K: int, xs: Iterable[int]) -> List[Tuple[int, float, float]]:
 
 
 def write_csv(rows: List[Tuple[int, float, float]], path: str) -> None:
+    # Write rows of (X, p_break_binding, p_break_hiding) to a CSV file with header.
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -133,10 +140,12 @@ def _try_import_matplotlib():
 
 
 def _clamp01(values: List[float], eps: float) -> List[float]:
+    # Clamp values to [eps, 1-eps] for logit plotting.
     return [min(1.0 - eps, max(eps, v)) for v in values]
 
 
 def plot_png_combined(rows: List[Tuple[int, float, float]], path: str) -> bool:
+    # Plot both break probabilities on the same logit plot, returning True if successful (matplotlib available) or False if skipped.
     plt = _try_import_matplotlib()
     if plt is None:
         return False
@@ -178,6 +187,7 @@ def plot_png_single(
     series_label: str,
     eps: float = 1e-12,
 ) -> bool:
+    # Plot a single series on a logit plot, returning True if successful (matplotlib available) or False if skipped.
     plt = _try_import_matplotlib()
     if plt is None:
         return False
