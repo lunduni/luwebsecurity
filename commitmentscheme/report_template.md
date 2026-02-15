@@ -150,7 +150,9 @@ This repo includes a helper script:
 
 It writes:
 - `commitmentscheme/out/probabilities.csv`
-- `commitmentscheme/out/probabilities.png` (if matplotlib is installed)
+- `commitmentscheme/out/probabilities.png` (combined; if matplotlib is installed)
+- `commitmentscheme/out/probabilities_binding.png` (binding-only; if matplotlib is installed)
+- `commitmentscheme/out/probabilities_hiding.png` (hiding-only; if matplotlib is installed)
 
 Example run:
 

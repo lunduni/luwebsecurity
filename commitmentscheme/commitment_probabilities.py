@@ -124,10 +124,21 @@ def write_csv(rows: List[Tuple[int, float, float]], path: str) -> None:
         writer.writerows(rows)
 
 
-def plot_png(rows: List[Tuple[int, float, float]], path: str) -> bool:
+def _try_import_matplotlib():
     try:
         import matplotlib.pyplot as plt  # type: ignore
     except Exception:
+        return None
+    return plt
+
+
+def _clamp01(values: List[float], eps: float) -> List[float]:
+    return [min(1.0 - eps, max(eps, v)) for v in values]
+
+
+def plot_png_combined(rows: List[Tuple[int, float, float]], path: str) -> bool:
+    plt = _try_import_matplotlib()
+    if plt is None:
         return False
 
     xs = [r[0] for r in rows]
@@ -136,16 +147,11 @@ def plot_png(rows: List[Tuple[int, float, float]], path: str) -> bool:
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
-    plt.figure(figsize=(8, 4.5))
-    plt.plot(xs, pb, label="Break binding")
-    plt.plot(xs, ph, label="Break hiding")
-    plt.yscale("logit")  # emphasizes transition regions (still shows 0/1 as inf)
-
     # Matplotlib logit can't plot exact 0 or 1; clamp for display.
     eps = 1e-12
-    pb2 = [min(1 - eps, max(eps, v)) for v in pb]
-    ph2 = [min(1 - eps, max(eps, v)) for v in ph]
-    plt.clf()
+    pb2 = _clamp01(pb, eps)
+    ph2 = _clamp01(ph, eps)
+
     plt.figure(figsize=(8, 4.5))
     plt.plot(xs, pb2, label="Break binding")
     plt.plot(xs, ph2, label="Break hiding")
@@ -155,6 +161,38 @@ def plot_png(rows: List[Tuple[int, float, float]], path: str) -> bool:
     plt.xlabel("Truncation length X (bits)")
     plt.ylabel("Probability")
     plt.title("Truncated-hash commitment: break probabilities vs X (K=16)")
+    plt.grid(True, which="both", linestyle=":", linewidth=0.8)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(path, dpi=200)
+    plt.close()
+    return True
+
+
+def plot_png_single(
+    xs: List[int],
+    ys: List[float],
+    *,
+    path: str,
+    title: str,
+    series_label: str,
+    eps: float = 1e-12,
+) -> bool:
+    plt = _try_import_matplotlib()
+    if plt is None:
+        return False
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+    ys2 = _clamp01(ys, eps)
+    plt.figure(figsize=(8, 4.5))
+    plt.plot(xs, ys2, label=series_label)
+    plt.yscale("logit")
+    plt.ylim(eps, 1 - eps)
+
+    plt.xlabel("Truncation length X (bits)")
+    plt.ylabel("Probability")
+    plt.title(title)
     plt.grid(True, which="both", linestyle=":", linewidth=0.8)
     plt.legend()
     plt.tight_layout()
@@ -185,16 +223,38 @@ def main() -> int:
     rows = compute_series(args.K, xs)
 
     csv_path = os.path.join(args.outdir, "probabilities.csv")
-    png_path = os.path.join(args.outdir, "probabilities.png")
+    png_combined_path = os.path.join(args.outdir, "probabilities.png")
+    png_binding_path = os.path.join(args.outdir, "probabilities_binding.png")
+    png_hiding_path = os.path.join(args.outdir, "probabilities_hiding.png")
 
     write_csv(rows, csv_path)
-    plotted = plot_png(rows, png_path)
+    plotted_combined = plot_png_combined(rows, png_combined_path)
+    if plotted_combined:
+        xs = [r[0] for r in rows]
+        pb = [r[1] for r in rows]
+        ph = [r[2] for r in rows]
+        plot_png_single(
+            xs,
+            pb,
+            path=png_binding_path,
+            title=f"Truncated-hash commitment: break binding vs X (K={args.K})",
+            series_label="Break binding",
+        )
+        plot_png_single(
+            xs,
+            ph,
+            path=png_hiding_path,
+            title=f"Truncated-hash commitment: break hiding vs X (K={args.K})",
+            series_label="Break hiding",
+        )
 
     print(f"Wrote: {csv_path}")
-    if plotted:
-        print(f"Wrote: {png_path}")
+    if plotted_combined:
+        print(f"Wrote: {png_combined_path}")
+        print(f"Wrote: {png_binding_path}")
+        print(f"Wrote: {png_hiding_path}")
     else:
-        print("Matplotlib not available; skipped PNG plot (CSV still written).")
+        print("Matplotlib not available; skipped PNG plots (CSV still written).")
 
     # Also print a small table to stdout for quick inspection.
     print("\nX\tP_break_binding\tP_break_hiding")
