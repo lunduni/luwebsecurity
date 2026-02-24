@@ -1,0 +1,12 @@
+Implement the RSA Key Attack assignment in this directory.
+
+Usage (from repo root, with venv activated):
+
+- Default files in this folder:
+	- python rsakeyattack\solve.py
+
+- Provide a different corrupted key + ciphertext:
+	- python rsakeyattack\solve.py --key path\to\key.pem --ciphertext path\to\ciphertext.txt
+
+- Choose output path for the recovered key:
+	- python rsakeyattack\solve.py --out-key path\to\recovered_key.pem
