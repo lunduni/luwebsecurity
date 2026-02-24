@@ -1,0 +1,48 @@
+
+
+===== PAGE 1 =====
+Building Block 2: Threshold ElGamal
+1
+secret sharing & `real´ threshold decryption
+(x1,y1)
+any t out of N parties can 
+jointly decrypt a ciphertext
+Global Public Key = ¯y
+¯y=y1⋅y2⋯yN=gx1+x2+⋯xN
+secret shares their secret key  
+with the other authorities
+xi
+
+===== PAGE 2 =====
+Building Block 2: Threshold ElGamal
+2
+secret sharing & `real´ threshold decryptionany t out of N parties can 
+jointly decrypt a ciphertext
+Global Public Key = ¯y
+¯y=y1⋅y2⋯yN=gx1+x2+⋯xN
+computes their local share
+(combine shares received by others)
+(x1,y1)
+
+===== PAGE 3 =====
+Building Block 2: Threshold ElGamal
+3
+secret sharing & `real´ threshold decryption
+☝forces authorities to act honestly
+any t out of N parties can 
+jointly decrypt a ciphertext
+Global Public Key = ¯y
+¯y=y1⋅y2⋯yN=gx1+x2+⋯xN
+commits to their local share
+(x1,y1)
+
+===== PAGE 4 =====
+Building Block 2: Threshold ElGamal
+4
+secret sharing & `real´ threshold decryptionany t out of N parties can 
+jointly decrypt a ciphertext
+Global Public Key = ¯y
+¯y=y1⋅y2⋯yN=gx1+x2+⋯xN
+In order to decrypt
+t authorities post decryption ‘tokens’
+(x1,y1)
