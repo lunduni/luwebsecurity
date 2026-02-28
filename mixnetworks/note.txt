@@ -1,1 +1,18 @@
 Implement the De-anonymizing Mixed Networks assignment in this directory.
+
+Solver entrypoint is mixnetworks/solve.py
+(Implementation lives in mixnetworks/disclosure_attack/solve.py)
+
+Example usage (from repo root):
+
+- python .\mixnetworks\solve.py --nazir 147.9.13.37 --mix 148.4.53.119 --partners 3 --pcap .\mixnetworks\disclosure_attack\cia.log.10.pcap
+
+No-args default mode:
+
+- If you run `python .\mixnetworks\solve.py` with no arguments, it will read:
+	- mixnetworks/nazir.txt (Nazir IP)
+	- mixnetworks/mix.txt (Mix IP)
+	- mixnetworks/partners.txt (number of partners)
+	- mixnetworks/pcap.pcap (pcap file)
+
+Output is a single integer: the sum of the partner IPs interpreted as 32-bit big-endian integers.
