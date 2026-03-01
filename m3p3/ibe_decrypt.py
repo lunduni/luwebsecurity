@@ -90,7 +90,7 @@ def main():
     with open("cipher.txt", "r") as f:
         ciphertext = [line.strip() for line in f.readlines()]
 
-    email = "walterwhite@crypto.sec"
+    email = "craig@crypto.sec"
     while not email:
         email = input("Enter your email: ").strip()
 
