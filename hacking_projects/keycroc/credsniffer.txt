@@ -111,7 +111,7 @@ log INFO "STEP 5: Cleaned password to inject: ${CLEAN_KEYS}"
 Q DELAY 2000
 Q GUI r
 Q DELAY 600
-Q STRING notepad H:\Downloads\password.txt
+Q STRING notepad H:password.txt
 Q ENTER
 Q DELAY 1200
 # If file doesn't exist, Notepad asks "Create new file?" — confirm with Enter
@@ -138,7 +138,10 @@ Q DELAY 600
 Q STRING cmd
 Q ENTER
 Q DELAY 400
-Q STRING cd H:\Desktop
+Q STRING cd H:
+Q ENTER
+Q DELAY 200
+Q STRING cd Desktop
 Q ENTER
 Q DELAY 200
 Q STRING powershell
