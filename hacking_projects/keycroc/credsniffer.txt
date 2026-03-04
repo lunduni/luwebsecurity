@@ -132,9 +132,7 @@ Q DELAY 400
 Q STRING cd /d H:\Desktop
 Q ENTER
 Q DELAY 200
-Q STRING echo @echo off> MicrosoftEdgeUpdate.bat
-Q ENTER
-Q STRING echo echo This could be a POST or SSH command>> MicrosoftEdgeUpdate.bat
+Q STRING echo This could be a POST or SSH command> MicrosoftEdgeUpdate.bat
 Q ENTER
 Q DELAY 200
 Q STRING exit
