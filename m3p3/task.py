@@ -83,14 +83,16 @@ class IBEDecryptor:
 
 
 def main():
-    p = 0x9240633D434A8B71A013B5B00513323F
-    q = 0xF870CFCD47E6D5A0598FC1EB7E999D1B
+    p = 0x9240633d434a8b71a013b5b00513323f
+    q = 0xf870cfcd47e6d5a0598fc1eb7e999d1b
+    # p = 0x9240633D434A8B71A013B5B00513323F
+    # q = 0xF870CFCD47E6D5A0598FC1EB7E999D1B
     pkg = PKG(p, q)
     decryptor = IBEDecryptor(pkg)
-    with open("cipher.txt", "r") as f:
+    with open("m3p3/cipher.txt", "r") as f:
         ciphertext = [line.strip() for line in f.readlines()]
 
-    email = "walterwhite@crypto.sec"
+    email = "peggy@crypto.sec"
     while not email:
         email = input("Enter your email: ").strip()
 

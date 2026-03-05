@@ -1,0 +1,40 @@
+# Title: Wordlist Typer
+# Description: Reads a wordlist from the switch folder and types each word followed by ENTER.
+
+# Set purple LED to indicate setup phase
+LED SETUP
+
+# Set the attack mode to HID (Keyboard) and STORAGE (Flash Drive)
+ATTACKMODE HID STORAGE
+
+# Wait 3 seconds for the target machine to recognize the HID keyboard
+sleep 3
+
+# Define the path to the wordlist
+# /root/udisk/ corresponds to the root of the Bash Bunny flash drive
+# Modify 'switch1' if you are using switch2
+WORDLIST="/root/udisk/payloads/switch1/wordlist.txt"
+
+# Set red LED to indicate the attack is running
+LED ATTACK
+
+# Check if the wordlist exists to prevent errors
+if [ -f "$WORDLIST" ]; then
+    # Read the file line by line
+    while IFS= read -r word; do
+        # Type the word
+        QUACK STRING "$word"
+        
+        # Press ENTER
+        QUACK ENTER
+        
+        # Short delay between words
+        sleep 0.5 
+    done < "$WORDLIST"
+    
+    # Set green LED to indicate success
+    LED FINISH
+else
+    # Set flashing red LED if the wordlist is missing
+    LED FAIL
+fi

