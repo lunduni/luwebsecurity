@@ -1,1 +1,8 @@
 __pycache__/
+
+*.txt
+*.pcap
+
+# Exception: allow .txt files in hacking_projects
+!hacking_projects/**/*.txt
+

@@ -92,7 +92,11 @@ def main():
     with open("m3p3/cipher.txt", "r") as f:
         ciphertext = [line.strip() for line in f.readlines()]
 
+<<<<<<< HEAD:m3p3/task.py
     email = "peggy@crypto.sec"
+=======
+    email = "craig@crypto.sec"
+>>>>>>> 721f89a27f2d1acee95e93435e53be8cb7fd526d:m3p3/ibe_decrypt.py
     while not email:
         email = input("Enter your email: ").strip()
 

